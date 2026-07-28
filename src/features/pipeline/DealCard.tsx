@@ -52,7 +52,10 @@ export function DealCard({ deal, agents }: { deal: Deal; agents: Agent[] }) {
       )}
 
       {cancelling && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
           <div className="w-full max-w-sm rounded-xl bg-surface-low p-4 shadow-xl">
             <p className="mb-3 text-sm">¿Motivo de cancelación?</p>
             <input
