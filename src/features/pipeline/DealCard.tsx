@@ -45,7 +45,10 @@ export function DealCard({ deal, agents }: { deal: Deal; agents: Agent[] }) {
         <button
           className="mt-2 text-xs text-red-700 hover:underline"
           onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => setCancelling(true)}
+          onClick={() => {
+            cancel.reset();
+            setCancelling(true);
+          }}
         >
           Cancelar
         </button>
@@ -63,10 +66,16 @@ export function DealCard({ deal, agents }: { deal: Deal; agents: Agent[] }) {
               className="w-full rounded border border-surface-highest bg-surface px-3 py-2 text-sm"
               placeholder="Motivo"
             />
+            {cancel.isError && (
+              <p className="mt-2 text-xs text-red-700">{cancel.error.message}</p>
+            )}
             <div className="mt-3 flex justify-end gap-2">
               <button
                 className="rounded-full px-3 py-1.5 text-sm text-ink-soft"
-                onClick={() => setCancelling(false)}
+                onClick={() => {
+                  cancel.reset();
+                  setCancelling(false);
+                }}
               >
                 Volver
               </button>
