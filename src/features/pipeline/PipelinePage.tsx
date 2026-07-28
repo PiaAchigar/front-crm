@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { DndContext, useDroppable, type DragEndEvent } from "@dnd-kit/core";
 import type { Agent, Deal, Stage } from "../../api/deals";
-import { useAgentsList, useDealsList, useUpdateDealStage } from "./usePipeline";
+import { useAgentsList, useCreateDeal, useDealsList, useUpdateDealStage } from "./usePipeline";
 import { DealCard } from "./DealCard";
+import { DealFormModal } from "./DealFormModal";
 
 const STAGES: { key: Stage; label: string }[] = [
   { key: "lead", label: "Lead" },
@@ -45,6 +47,8 @@ export function PipelinePage() {
   const { data: deals = [] } = useDealsList();
   const { data: agents = [] } = useAgentsList();
   const updateStage = useUpdateDealStage();
+  const createDeal = useCreateDeal();
+  const [creating, setCreating] = useState(false);
 
   const visibleDeals = deals.filter((d) => !d.cancelled);
 
@@ -58,18 +62,41 @@ export function PipelinePage() {
   }
 
   return (
-    <DndContext onDragEnd={handleDragEnd}>
-      <div className="flex gap-3 overflow-x-auto pb-4">
-        {STAGES.map(({ key, label }) => (
-          <Column
-            key={key}
-            stage={key}
-            label={label}
-            deals={visibleDeals.filter((d) => d.stage === key)}
-            agents={agents}
-          />
-        ))}
+    <div className="flex flex-col gap-4">
+      <div className="flex justify-end">
+        <button
+          className="rounded-full bg-primary px-4 py-1.5 text-sm text-white hover:bg-primary-dark"
+          onClick={() => {
+            createDeal.reset();
+            setCreating(true);
+          }}
+        >
+          + Nuevo deal
+        </button>
       </div>
-    </DndContext>
+
+      <DndContext onDragEnd={handleDragEnd}>
+        <div className="flex gap-3 overflow-x-auto pb-4">
+          {STAGES.map(({ key, label }) => (
+            <Column
+              key={key}
+              stage={key}
+              label={label}
+              deals={visibleDeals.filter((d) => d.stage === key)}
+              agents={agents}
+            />
+          ))}
+        </div>
+      </DndContext>
+
+      {creating && (
+        <DealFormModal
+          saving={createDeal.isPending}
+          error={createDeal.error ? createDeal.error.message : null}
+          onClose={() => setCreating(false)}
+          onSave={(data) => createDeal.mutate(data, { onSuccess: () => setCreating(false) })}
+        />
+      )}
+    </div>
   );
 }

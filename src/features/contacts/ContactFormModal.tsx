@@ -63,7 +63,16 @@ export function ContactFormModal({
             className="rounded-full bg-primary px-4 py-1.5 text-sm text-white hover:bg-primary-dark"
             onClick={() => {
               if (!name.trim()) return;
-              onSave({ name, phone, email, status });
+              // `email`/`phone` son opcionales en el backend, pero un string
+              // vacío NO es `undefined` para Zod: `z.string().email().optional()`
+              // rechaza "" con un 400. Se mandan como `undefined` para que
+              // queden fuera del JSON.
+              onSave({
+                name: name.trim(),
+                phone: phone.trim() || undefined,
+                email: email.trim() || undefined,
+                status,
+              });
             }}
           >
             Guardar
