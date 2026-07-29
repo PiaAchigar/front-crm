@@ -9,7 +9,7 @@ const PERMISSIONS: Record<Section, Record<Capability, Role[]>> = {
   crm: {
     view: ["admin", "manager", "operator", "sales"],
     edit: ["admin", "manager", "operator", "sales"],
-    manage: ["admin", "manager", "operator", "sales"],
+    manage: ["admin"],
   },
 };
 
