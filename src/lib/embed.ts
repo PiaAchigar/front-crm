@@ -18,9 +18,12 @@ export const DASHBOARD_ORIGIN = import.meta.env.VITE_DASHBOARD_ORIGIN as
 const READY_MSG = "piubella:crm:ready";
 const TOKEN_MSG = "piubella:crm:token";
 
-export function useEmbedToken(): boolean {
+export function useEmbedToken(): { ready: boolean; token: string | null } {
   const qc = useQueryClient();
-  const [ready, setReady] = useState(false);
+  const [state, setState] = useState<{ ready: boolean; token: string | null }>({
+    ready: false,
+    token: null,
+  });
 
   useEffect(() => {
     function onMessage(e: MessageEvent) {
@@ -28,7 +31,7 @@ export function useEmbedToken(): boolean {
       const data = e.data as { type?: string; accessToken?: unknown } | null;
       if (data?.type === TOKEN_MSG && typeof data.accessToken === "string") {
         setAuthToken(data.accessToken);
-        setReady(true);
+        setState({ ready: true, token: data.accessToken });
         void qc.invalidateQueries();
       }
     }
@@ -39,5 +42,5 @@ export function useEmbedToken(): boolean {
     return () => window.removeEventListener("message", onMessage);
   }, [qc]);
 
-  return ready;
+  return state;
 }
