@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import type { ContactInput } from "../../api/contacts";
+import { ApiError } from "../../api/client";
 import { useArchiveContact, useContactDetail, useUpdateContact } from "./useContacts";
 import { ContactFormModal } from "./ContactFormModal";
 
@@ -19,16 +20,21 @@ function dateOnly(v: string | null): string {
 export function ContactDetailPage() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
-  const { data, isLoading, isError } = useContactDetail(id);
+  const { data, isLoading, isError, error } = useContactDetail(id);
   const update = useUpdateContact();
   const archive = useArchiveContact();
   const [editing, setEditing] = useState(false);
 
   if (isLoading) return <p className="text-ink-soft">Cargando...</p>;
   if (isError || !data) {
+    const isNotFound = error instanceof ApiError && error.status === 404;
     return (
       <div className="flex flex-col gap-3">
-        <p className="text-ink-soft">Contacto no encontrado.</p>
+        <p className="text-ink-soft">
+          {isNotFound
+            ? "No encontramos este contacto. Puede que haya sido eliminado."
+            : "No pudimos cargar la ficha. Hubo un problema del servidor — probá recargar en un momento."}
+        </p>
         <Link to="/contactos" className="text-primary hover:underline">← Contactos</Link>
       </div>
     );

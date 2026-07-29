@@ -4,6 +4,17 @@ const API_URL = import.meta.env.VITE_API_URL as string;
 /** Fallback de auth para correr el CRM standalone en dev (sin el dashboard). */
 const API_KEY = import.meta.env.VITE_API_KEY as string | undefined;
 
+/** Error de una respuesta HTTP no-OK. Lleva el `status` para que la UI pueda
+ *  distinguir casos (ej: 404 "no existe" vs 500 "error del servidor"). */
+export class ApiError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 /** El backend devuelve `{ error: string }` para errores de negocio (badRequest,
  *  notFound, etc.), pero `@hono/zod-validator` devuelve `{ success: false, error:
  *  <ZodError> }` en fallos de validación — sin esto, ese caso rendería
@@ -40,7 +51,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(extractErrorMessage(body) ?? `Error ${res.status}`);
+    throw new ApiError(res.status, extractErrorMessage(body) ?? `Error ${res.status}`);
   }
   if (res.status === 204) return undefined as T;
   return res.json();
