@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchAgents } from "../../api/deals";
 import { CHANNEL_META } from "../channels/channels.config";
 import { useConversation, useSendMessage, useUpdateConversation } from "./useInbox";
+import { useSimulateInbound } from "../automation/useAutomations";
 
 export function ConversationThread({
   conversationId,
@@ -15,6 +16,7 @@ export function ConversationThread({
   const { data: agents = [] } = useQuery({ queryKey: ["agents"], queryFn: fetchAgents });
   const send = useSendMessage();
   const update = useUpdateConversation();
+  const simulate = useSimulateInbound();
   const [draft, setDraft] = useState("");
 
   if (isLoading) return <div className="p-4 text-sm text-ink-soft">Cargando hilo…</div>;
@@ -43,6 +45,18 @@ export function ConversationThread({
         </div>
         {canEdit && (
           <div className="flex items-center gap-2">
+            <button
+              className="rounded-full border border-surface-highest px-3 py-1 text-xs hover:bg-surface-high"
+              disabled={simulate.isPending}
+              onClick={() => {
+                const text = window.prompt("Simular mensaje entrante del cliente:");
+                if (text && text.trim()) {
+                  simulate.mutate({ conversationId, content: text.trim() });
+                }
+              }}
+            >
+              Simular entrante
+            </button>
             <select
               className="rounded border border-surface-highest bg-surface px-2 py-1 text-xs"
               value={conversation.assignedAgentId ?? ""}
