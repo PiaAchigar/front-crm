@@ -53,3 +53,7 @@ export function cancelDeal(id: string, cancelReason: string): Promise<Deal> {
     body: JSON.stringify({ cancelReason }),
   });
 }
+
+export function updateDealTitle(id: string, title: string): Promise<Deal> {
+  return apiFetch(`/api/crm/deals/${id}`, { method: "PATCH", body: JSON.stringify({ title }) });
+}

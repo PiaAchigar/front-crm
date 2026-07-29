@@ -6,6 +6,7 @@ import {
   fetchAgents,
   fetchDeals,
   updateDealStage,
+  updateDealTitle,
   type Stage,
 } from "../../api/deals";
 
@@ -52,6 +53,14 @@ export function useCreateDeal() {
   const invalidate = useDealsInvalidate();
   return useMutation({
     mutationFn: (data: { contactId: string; title: string }) => createDeal(data),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateDealTitle() {
+  const invalidate = useDealsInvalidate();
+  return useMutation({
+    mutationFn: ({ id, title }: { id: string; title: string }) => updateDealTitle(id, title),
     onSuccess: invalidate,
   });
 }
