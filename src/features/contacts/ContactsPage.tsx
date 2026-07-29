@@ -1,30 +1,31 @@
 import { useState } from "react";
-import type { Contact, ContactInput } from "../../api/contacts";
-import { useContactsList, useCreateContact, useUpdateContact } from "./useContacts";
+import { useNavigate } from "react-router-dom";
+import type { ContactInput } from "../../api/contacts";
+import { useContactsList, useCreateContact } from "./useContacts";
 import { ContactFormModal } from "./ContactFormModal";
 
 export function ContactsPage() {
+  const navigate = useNavigate();
   const [status, setStatus] = useState<string>("");
   const [q, setQ] = useState("");
-  const [editing, setEditing] = useState<Contact | null>(null);
+  const [includeArchived, setIncludeArchived] = useState(false);
   const [creating, setCreating] = useState(false);
 
-  const { data: contacts = [], isLoading } = useContactsList({ status: status || undefined, q });
+  const { data: contacts = [], isLoading } = useContactsList({
+    status: status || undefined,
+    q,
+    includeArchived,
+  });
   const create = useCreateContact();
-  const update = useUpdateContact();
 
   function handleSave(data: ContactInput) {
-    if (editing) {
-      update.mutate({ id: editing.id, data }, { onSuccess: () => setEditing(null) });
-    } else {
-      create.mutate(data, { onSuccess: () => setCreating(false) });
-    }
+    create.mutate(data, { onSuccess: () => setCreating(false) });
   }
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <input
             className="rounded border border-surface-highest bg-surface-low px-3 py-1.5 text-sm"
             placeholder="Buscar..."
@@ -41,6 +42,14 @@ export function ContactsPage() {
             <option value="customer">Customer</option>
             <option value="inactive">Inactive</option>
           </select>
+          <label className="flex items-center gap-1.5 text-sm text-ink-soft">
+            <input
+              type="checkbox"
+              checked={includeArchived}
+              onChange={(e) => setIncludeArchived(e.target.checked)}
+            />
+            Mostrar archivados
+          </label>
         </div>
         <button
           className="rounded-full bg-primary px-4 py-1.5 text-sm text-white hover:bg-primary-dark"
@@ -60,37 +69,29 @@ export function ContactsPage() {
               <th className="py-2">Teléfono</th>
               <th className="py-2">Email</th>
               <th className="py-2">Estado</th>
-              <th className="py-2"></th>
             </tr>
           </thead>
           <tbody>
             {contacts.map((c) => (
-              <tr key={c.id} className="border-t border-surface-high">
-                <td className="py-2">{c.name}</td>
+              <tr
+                key={c.id}
+                className="cursor-pointer border-t border-surface-high hover:bg-surface-high"
+                onClick={() => navigate(`/contactos/${c.id}`)}
+              >
+                <td className="py-2">{c.name}{c.isArchived ? " (archivado)" : ""}</td>
                 <td className="py-2">{c.phone}</td>
                 <td className="py-2">{c.email}</td>
                 <td className="py-2">{c.status}</td>
-                <td className="py-2 text-right">
-                  <button
-                    className="text-primary hover:underline"
-                    onClick={() => setEditing(c)}
-                  >
-                    Editar
-                  </button>
-                </td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
 
-      {(creating || editing) && (
+      {creating && (
         <ContactFormModal
-          contact={editing}
-          onClose={() => {
-            setCreating(false);
-            setEditing(null);
-          }}
+          contact={null}
+          onClose={() => setCreating(false)}
           onSave={handleSave}
         />
       )}
