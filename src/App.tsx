@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
 import { ContactsPage } from "./features/contacts/ContactsPage";
+import { ContactDetailPage } from "./features/contacts/ContactDetailPage";
 import { PipelinePage } from "./features/pipeline/PipelinePage";
 import { InboxPage } from "./features/inbox/InboxPage";
 import { AutomationPage } from "./features/automation/AutomationPage";
@@ -27,6 +28,7 @@ export default function App() {
           <Route path="/automatizacion" element={<AutomationPage />} />
           <Route path="/pipeline" element={<PipelinePage />} />
           <Route path="/contactos" element={<ContactsPage />} />
+          <Route path="/contactos/:id" element={<ContactDetailPage />} />
           <Route path="/canales" element={<ChannelsPage />} />
         </Routes>
       </AppShell>
