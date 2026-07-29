@@ -10,6 +10,11 @@ function money(v: string | null): string {
 function dateShort(v: string | null): string {
   return v ? new Date(v).toLocaleDateString() : "—";
 }
+function dateOnly(v: string | null): string {
+  // birthdate es "YYYY-MM-DD" (fecha pura): parsear como local (no UTC) para no
+  // mostrar el día anterior en AR.
+  return v ? new Date(`${v}T00:00:00`).toLocaleDateString() : "—";
+}
 
 export function ContactDetailPage() {
   const { id = "" } = useParams();
@@ -72,9 +77,10 @@ export function ContactDetailPage() {
           <div><dt className="text-ink-soft">WhatsApp</dt><dd>{contact.whatsappId ?? "—"}</dd></div>
           <div><dt className="text-ink-soft">Instagram</dt><dd>{contact.instagramId ?? "—"}</dd></div>
           <div><dt className="text-ink-soft">Facebook</dt><dd>{contact.facebookId ?? "—"}</dd></div>
-          <div><dt className="text-ink-soft">Cumpleaños</dt><dd>{dateShort(contact.birthdate)}</dd></div>
+          <div><dt className="text-ink-soft">Cumpleaños</dt><dd>{dateOnly(contact.birthdate)}</dd></div>
           <div><dt className="text-ink-soft">Servicio preferido</dt><dd>{contact.preferredService ?? "—"}</dd></div>
-          <div><dt className="text-ink-soft">Ciudad</dt><dd>{[contact.address, contact.city].filter(Boolean).join(", ") || "—"}</dd></div>
+          <div><dt className="text-ink-soft">Dirección</dt><dd>{contact.address ?? "—"}</dd></div>
+          <div><dt className="text-ink-soft">Ciudad</dt><dd>{[contact.city, contact.postalCode, contact.country].filter(Boolean).join(", ") || "—"}</dd></div>
           <div className="col-span-2"><dt className="text-ink-soft">Tags</dt><dd>{contact.tags?.length ? contact.tags.join(", ") : "—"}</dd></div>
           <div className="col-span-2"><dt className="text-ink-soft">Notas</dt><dd className="whitespace-pre-wrap">{contact.notes ?? "—"}</dd></div>
         </dl>
