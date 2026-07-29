@@ -117,7 +117,7 @@ export function ContactDetailPage() {
             <tbody>
               {deals.map((d) => (
                 <tr key={d.id} className={`border-t border-surface-high ${d.cancelled ? "text-ink-soft line-through" : ""}`}>
-                  <td className="py-1">{d.serviceName ?? d.title ?? "—"}</td>
+                  <td className="py-1">{d.title ?? d.serviceName ?? "—"}</td>
                   <td className="py-1">{d.stage}</td>
                   <td className="py-1">{money(d.seniaAmount)}</td>
                   <td className="py-1">{money(d.totalAmount ?? d.servicePrice)}</td>

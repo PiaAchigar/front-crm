@@ -16,7 +16,7 @@ export function DealCard({ deal, agents }: { deal: Deal; agents: Agent[] }) {
     return (
       <div className="rounded-lg border border-surface-highest bg-surface-container p-3 text-sm opacity-60">
         <p className="font-medium">{deal.contactName ?? "Sin contacto"}</p>
-        <p className="text-ink-soft">{deal.serviceName ?? deal.title}</p>
+        <p className="text-ink-soft">{deal.title ?? deal.serviceName}</p>
         <span className="mt-1 inline-block rounded-full bg-surface-high px-2 py-0.5 text-xs text-ink-soft">
           Cancelado{deal.cancelReason ? `: ${deal.cancelReason}` : ""}
         </span>
@@ -37,7 +37,7 @@ export function DealCard({ deal, agents }: { deal: Deal; agents: Agent[] }) {
       className="cursor-grab rounded-lg border border-surface-highest bg-surface-low p-3 text-sm shadow-sm active:cursor-grabbing"
     >
       <p className="font-medium">{deal.contactName ?? "Sin contacto"}</p>
-      <p className="text-ink-soft">{deal.serviceName ?? deal.title}</p>
+      <p className="text-ink-soft">{deal.title ?? deal.serviceName}</p>
       {deal.seniaAmount && <p className="text-ink-soft">Seña: ${deal.seniaAmount}</p>}
 
       <select
