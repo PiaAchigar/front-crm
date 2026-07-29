@@ -29,3 +29,25 @@ h2,
 h3 {
   font-family: var(--font-display);
 }
+
+/* Scrollbar unificada del CRM — idéntica a la de front-agenda (.modal-scroll):
+   fina, 4px, thumb marrón redondeado, sin flechas. Se aplica global para que
+   todos los scrolls del CRM (kanban, listados, modales) queden iguales. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #a16d47 transparent;
+}
+*::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: #a16d47;
+  border-radius: 9999px;
+}
+*::-webkit-scrollbar-button {
+  display: none;
+}
