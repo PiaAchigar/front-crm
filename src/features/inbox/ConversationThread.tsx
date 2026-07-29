@@ -25,6 +25,7 @@ export function ConversationThread({
   const meta = conversation.channel ? CHANNEL_META[conversation.channel] : null;
 
   function submit() {
+    if (send.isPending) return;
     const content = draft.trim();
     if (!content) return;
     send.mutate({ id: conversationId, content }, { onSuccess: () => setDraft("") });
