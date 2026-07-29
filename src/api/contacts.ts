@@ -6,6 +6,18 @@ export type Contact = {
   email: string | null;
   phone: string | null;
   status: string | null;
+  whatsappId: string | null;
+  instagramId: string | null;
+  facebookId: string | null;
+  birthdate: string | null;
+  tags: string[] | null;
+  preferredService: string | null;
+  address: string | null;
+  city: string | null;
+  postalCode: string | null;
+  country: string | null;
+  notes: string | null;
+  isArchived: boolean | null;
   createdAt: string;
 };
 
@@ -15,13 +27,71 @@ export type ContactInput = {
   phone?: string;
   status?: "prospect" | "customer" | "inactive";
   notes?: string;
+  whatsappId?: string;
+  instagramId?: string;
+  facebookId?: string;
+  birthdate?: string;
+  tags?: string[];
+  preferredService?: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  country?: string;
+  isArchived?: boolean;
 };
 
-export function fetchContacts(params: { status?: string; q?: string }): Promise<Contact[]> {
+export type CustomerAccount = {
+  id: string;
+  dni: string | null;
+  cuit: string | null;
+  creditBalance: string;
+};
+
+export type ContactDeal = {
+  id: string;
+  title: string | null;
+  serviceName: string | null;
+  servicePrice: string | null;
+  seniaAmount: string | null;
+  seniaPaid: boolean | null;
+  stage: string;
+  cancelled: boolean | null;
+  totalAmount: string | null;
+  amountPaid: string | null;
+  amountPending: string | null;
+  createdAt: string;
+};
+
+export type ContactAppointment = {
+  id: string;
+  serviceName: string | null;
+  appointmentStart: string | null;
+  appointmentEnd: string | null;
+  servicePrice: string | null;
+  status: string | null;
+};
+
+export type ContactDetail = {
+  contact: Contact;
+  customer: CustomerAccount | null;
+  deals: ContactDeal[];
+  appointments: ContactAppointment[];
+};
+
+export function fetchContacts(params: {
+  status?: string;
+  q?: string;
+  includeArchived?: boolean;
+}): Promise<Contact[]> {
   const qs = new URLSearchParams();
   if (params.status) qs.set("status", params.status);
   if (params.q) qs.set("q", params.q);
+  if (params.includeArchived) qs.set("includeArchived", "true");
   return apiFetch(`/api/crm/contacts?${qs.toString()}`);
+}
+
+export function fetchContact(id: string): Promise<ContactDetail> {
+  return apiFetch(`/api/crm/contacts/${id}`);
 }
 
 export function createContact(data: ContactInput): Promise<Contact> {
@@ -30,4 +100,11 @@ export function createContact(data: ContactInput): Promise<Contact> {
 
 export function updateContact(id: string, data: Partial<ContactInput>): Promise<Contact> {
   return apiFetch(`/api/crm/contacts/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+}
+
+export function archiveContact(id: string): Promise<Contact> {
+  return apiFetch(`/api/crm/contacts/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ isArchived: true }),
+  });
 }

@@ -1,10 +1,25 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { type ContactInput, createContact, fetchContacts, updateContact } from "../../api/contacts";
+import {
+  type ContactInput,
+  archiveContact,
+  createContact,
+  fetchContact,
+  fetchContacts,
+  updateContact,
+} from "../../api/contacts";
 
-export function useContactsList(params: { status?: string; q?: string }) {
+export function useContactsList(params: { status?: string; q?: string; includeArchived?: boolean }) {
   return useQuery({
     queryKey: ["contacts", params],
     queryFn: () => fetchContacts(params),
+  });
+}
+
+export function useContactDetail(id: string) {
+  return useQuery({
+    queryKey: ["contact", id],
+    queryFn: () => fetchContact(id),
+    enabled: !!id,
   });
 }
 
@@ -21,6 +36,20 @@ export function useUpdateContact() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<ContactInput> }) =>
       updateContact(id, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["contacts"] }),
+    onSuccess: (_res, { id }) => {
+      qc.invalidateQueries({ queryKey: ["contacts"] });
+      qc.invalidateQueries({ queryKey: ["contact", id] });
+    },
+  });
+}
+
+export function useArchiveContact() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => archiveContact(id),
+    onSuccess: (_res, id) => {
+      qc.invalidateQueries({ queryKey: ["contacts"] });
+      qc.invalidateQueries({ queryKey: ["contact", id] });
+    },
   });
 }
