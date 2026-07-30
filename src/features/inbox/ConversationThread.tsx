@@ -150,7 +150,8 @@ export function ConversationThread({
             <p className="mt-1 text-xs text-red-600">{(send.error as Error).message}</p>
           )}
           <p className="mt-1 text-[11px] text-ink-soft">
-            Se guarda en el historial. El envío real por el canal se habilita en una fase posterior.
+            Se envía por el canal de la conversación (ej. WhatsApp) y queda guardado en el
+            historial.
           </p>
         </div>
       )}

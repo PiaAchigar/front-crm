@@ -22,6 +22,7 @@ export function ChannelFormModal({
   const [credentialValues, setCredentialValues] = useState<Record<string, string>>(() =>
     Object.fromEntries((meta.credentialFields ?? []).map((f) => [f.key, ""])),
   );
+  const [credentialsError, setCredentialsError] = useState<string | null>(null);
 
   function buildConfig(): Record<string, unknown> {
     const config: Record<string, unknown> = {};
@@ -40,6 +41,23 @@ export function ChannelFormModal({
     );
     if (entries.every(([, v]) => v === "")) return undefined;
     return Object.fromEntries(entries);
+  }
+
+  /** Las credenciales son todo-o-nada: el backend rechaza un objeto parcial
+   *  (los campos vacíos llegan como "" y fallan la validación de Zod con un
+   *  mensaje poco claro). Detectamos ese caso acá para mostrar un error
+   *  entendible antes de intentar guardar. */
+  function credentialsValidationError(): string | null {
+    if (!meta.credentialFields) return null;
+    const entries = meta.credentialFields.map(
+      (f) => [f.key, (credentialValues[f.key] ?? "").trim()] as const,
+    );
+    const someFilled = entries.some(([, v]) => v !== "");
+    const allFilled = entries.every(([, v]) => v !== "");
+    if (someFilled && !allFilled) {
+      return "Completá las 4 credenciales o dejalas todas vacías";
+    }
+    return null;
   }
 
   return (
@@ -64,7 +82,7 @@ export function ChannelFormModal({
             <>
               <p className="mt-2 text-xs text-ink-soft">
                 Credenciales de Meta (se guardan encriptadas). Dejalas vacías para no modificar
-                las ya guardadas.
+                las ya guardadas, o completá las 4 juntas para reemplazarlas.
               </p>
               {meta.credentialFields.map((f) => (
                 <label key={f.key} className="flex flex-col gap-1 text-sm">
@@ -82,8 +100,10 @@ export function ChannelFormModal({
               ))}
             </>
           )}
-          {upsert.isError && (
-            <p className="text-sm text-red-600">{(upsert.error as Error).message}</p>
+          {(credentialsError || upsert.isError) && (
+            <p className="text-sm text-red-600">
+              {credentialsError ?? (upsert.error as Error).message}
+            </p>
           )}
         </div>
         <div className="mt-6 flex justify-end gap-2">
@@ -96,7 +116,13 @@ export function ChannelFormModal({
           <button
             className="rounded-full bg-primary px-4 py-1.5 text-sm text-white hover:bg-primary-dark disabled:opacity-50"
             disabled={upsert.isPending}
-            onClick={() =>
+            onClick={() => {
+              const validationError = credentialsValidationError();
+              if (validationError) {
+                setCredentialsError(validationError);
+                return;
+              }
+              setCredentialsError(null);
               upsert.mutate(
                 {
                   channelType: channel.channelType,
@@ -105,8 +131,8 @@ export function ChannelFormModal({
                   credentials: buildCredentials(),
                 },
                 { onSuccess: onClose },
-              )
-            }
+              );
+            }}
           >
             {upsert.isPending ? "Guardando..." : "Guardar"}
           </button>

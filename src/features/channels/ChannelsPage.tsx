@@ -34,8 +34,9 @@ export function ChannelsPage() {
       <div>
         <h1 className="text-2xl font-semibold">Canales</h1>
         <p className="text-sm text-ink-soft">
-          Configuración de WhatsApp, Instagram, Facebook y email. El envío real se habilita en
-          una fase posterior.
+          Configuración de WhatsApp, Instagram, Facebook y email. El envío real por WhatsApp ya
+          está disponible cargando las credenciales; los demás canales quedan para una fase
+          posterior.
         </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
