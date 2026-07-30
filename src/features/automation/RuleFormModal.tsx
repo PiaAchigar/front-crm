@@ -89,6 +89,12 @@ export function RuleFormModal({ rule, onClose }: { rule: Rule | null; onClose: (
 
         <div className="mb-3 rounded-lg border border-surface-highest p-3">
           <p className="mb-2 text-sm text-ink-soft">Si… (condiciones, opcionales)</p>
+          {conditions.length > 1 && (
+            <p className="mb-2 text-xs text-ink-soft">
+              Deben cumplirse <strong>todas</strong> las condiciones a la vez (Y). Si querés que
+              alcance con una sola palabra entre varias, creá una regla separada por cada palabra.
+            </p>
+          )}
           {conditions.map((cond, i) => (
             <div key={i} className="mb-2 flex items-center gap-2">
               <select
