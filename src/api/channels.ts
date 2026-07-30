@@ -17,7 +17,11 @@ export function fetchChannels(): Promise<Channel[]> {
 
 export function upsertChannel(
   channelType: ChannelType,
-  data: { config: Record<string, unknown>; isActive: boolean },
+  data: {
+    config: Record<string, unknown>;
+    isActive: boolean;
+    credentials?: Record<string, unknown>;
+  },
 ): Promise<Channel> {
   return apiFetch(`/api/crm/channels/${channelType}`, {
     method: "PUT",

@@ -2,17 +2,23 @@ import type { ChannelType } from "../../api/channels";
 
 export type ChannelField = { key: string; label: string; type: "text" | "number" };
 
-/** Metadata de display + campos editables por canal (todos NO-secretos). */
+/** Metadata de display + campos editables por canal (todos NO-secretos), más
+ *  `credentialFields` para los canales con integración real (Fase 6: solo
+ *  WhatsApp). Los credentialFields se guardan encriptados y nunca vuelven del
+ *  backend — los inputs siempre arrancan vacíos. */
 export const CHANNEL_META: Record<
   ChannelType,
-  { label: string; icon: string; fields: ChannelField[] }
+  { label: string; icon: string; fields: ChannelField[]; credentialFields?: ChannelField[] }
 > = {
   whatsapp: {
     label: "WhatsApp",
     icon: "🟢",
-    fields: [
-      { key: "phoneNumber", label: "Número (visible)", type: "text" },
-      { key: "phoneNumberId", label: "Phone number ID (Meta)", type: "text" },
+    fields: [{ key: "phoneNumber", label: "Número (visible)", type: "text" }],
+    credentialFields: [
+      { key: "accessToken", label: "Access Token", type: "text" },
+      { key: "phoneNumberId", label: "Phone Number ID", type: "text" },
+      { key: "appSecret", label: "App Secret", type: "text" },
+      { key: "verifyToken", label: "Verify Token", type: "text" },
     ],
   },
   instagram: {

@@ -12,11 +12,13 @@ export function useUpsertChannel() {
       channelType,
       config,
       isActive,
+      credentials,
     }: {
       channelType: ChannelType;
       config: Record<string, unknown>;
       isActive: boolean;
-    }) => upsertChannel(channelType, { config, isActive }),
+      credentials?: Record<string, unknown>;
+    }) => upsertChannel(channelType, { config, isActive, credentials }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["channels"] }),
   });
 }

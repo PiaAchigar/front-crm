@@ -3,8 +3,10 @@ import type { Channel } from "../../api/channels";
 import { CHANNEL_META } from "./channels.config";
 import { useUpsertChannel } from "./useChannels";
 
-/** Edita la config tipada del canal. Preserva `isActive` (el toggle vive en la
- *  card). Los campos number se mandan como número; el backend valida rangos. */
+/** Edita la config tipada del canal y, si tiene integración real (Fase 6:
+ *  solo WhatsApp), sus credenciales. Preserva `isActive` (el toggle vive en la
+ *  card). Los campos de credenciales arrancan vacíos siempre (el backend nunca
+ *  los devuelve) — dejarlos vacíos al guardar no toca lo ya guardado. */
 export function ChannelFormModal({
   channel,
   onClose,
@@ -17,6 +19,9 @@ export function ChannelFormModal({
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(meta.fields.map((f) => [f.key, String(channel.config[f.key] ?? "")])),
   );
+  const [credentialValues, setCredentialValues] = useState<Record<string, string>>(() =>
+    Object.fromEntries((meta.credentialFields ?? []).map((f) => [f.key, ""])),
+  );
 
   function buildConfig(): Record<string, unknown> {
     const config: Record<string, unknown> = {};
@@ -26,6 +31,15 @@ export function ChannelFormModal({
       config[f.key] = f.type === "number" ? Number(raw) : raw;
     }
     return config;
+  }
+
+  function buildCredentials(): Record<string, unknown> | undefined {
+    if (!meta.credentialFields) return undefined;
+    const entries = meta.credentialFields.map(
+      (f) => [f.key, (credentialValues[f.key] ?? "").trim()] as const,
+    );
+    if (entries.every(([, v]) => v === "")) return undefined;
+    return Object.fromEntries(entries);
   }
 
   return (
@@ -46,6 +60,28 @@ export function ChannelFormModal({
               />
             </label>
           ))}
+          {meta.credentialFields && (
+            <>
+              <p className="mt-2 text-xs text-ink-soft">
+                Credenciales de Meta (se guardan encriptadas). Dejalas vacías para no modificar
+                las ya guardadas.
+              </p>
+              {meta.credentialFields.map((f) => (
+                <label key={f.key} className="flex flex-col gap-1 text-sm">
+                  <span className="text-ink-soft">{f.label}</span>
+                  <input
+                    type="password"
+                    autoComplete="off"
+                    className="rounded border border-surface-highest bg-surface px-3 py-2 text-sm"
+                    value={credentialValues[f.key]}
+                    onChange={(e) =>
+                      setCredentialValues((v) => ({ ...v, [f.key]: e.target.value }))
+                    }
+                  />
+                </label>
+              ))}
+            </>
+          )}
           {upsert.isError && (
             <p className="text-sm text-red-600">{(upsert.error as Error).message}</p>
           )}
@@ -66,6 +102,7 @@ export function ChannelFormModal({
                   channelType: channel.channelType,
                   config: buildConfig(),
                   isActive: channel.isActive,
+                  credentials: buildCredentials(),
                 },
                 { onSuccess: onClose },
               )
