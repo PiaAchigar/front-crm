@@ -27,7 +27,11 @@ export function RunLog() {
               <td className="p-2">
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs ${
-                    r.status === "error" ? "bg-red-100 text-red-700" : "bg-green-100 text-green-800"
+                    r.status === "error"
+                      ? "bg-red-100 text-red-700"
+                      : r.status === "skipped"
+                        ? "bg-gray-100 text-gray-600"
+                        : "bg-green-100 text-green-800"
                   }`}
                 >
                   {r.status}

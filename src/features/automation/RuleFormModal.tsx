@@ -158,6 +158,12 @@ export function RuleFormModal({ rule, onClose }: { rule: Rule | null; onClose: (
               onChange={(e) => setActionConfig({ text: e.target.value })}
             />
           )}
+          {actionType === "reply_faq" && (
+            <p className="rounded-lg bg-surface-high p-3 text-xs text-ink-soft">
+              Esta acción no necesita configuración: al ejecutarse, revisa todas tus FAQs activas
+              (sección "FAQs" de Automatización) y responde con la que coincida por palabra clave.
+            </p>
+          )}
           {actionType === "change_deal_stage" && (
             <select
               className="w-full rounded border border-surface-highest bg-surface px-3 py-2 text-sm"

@@ -3,6 +3,7 @@ import type { Rule } from "../../api/automations";
 import { ACTION_LABELS, TRIGGERS } from "./automation.config";
 import { can } from "../../lib/permissions";
 import { useCrmSession } from "../../lib/session";
+import { FaqList } from "./FaqList";
 import { RuleFormModal } from "./RuleFormModal";
 import { RunLog } from "./RunLog";
 import { useDeleteRule, useRules, useUpdateRule } from "./useAutomations";
@@ -14,7 +15,7 @@ function triggerLabel(v: string | null) {
 export function AutomationPage() {
   const { role } = useCrmSession();
   const canManage = can(role, "crm", "manage");
-  const [tab, setTab] = useState<"reglas" | "registro">("reglas");
+  const [tab, setTab] = useState<"reglas" | "registro" | "faqs">("reglas");
   const [editing, setEditing] = useState<Rule | null>(null);
   const [creating, setCreating] = useState(false);
   const { data: rules = [], isLoading, isError } = useRules();
@@ -32,6 +33,14 @@ export function AutomationPage() {
             onClick={() => setTab("reglas")}
           >
             Reglas
+          </button>
+          <button
+            className={`rounded-full px-4 py-1.5 text-sm ${
+              tab === "faqs" ? "bg-primary text-white" : "text-ink-soft hover:bg-surface-high"
+            }`}
+            onClick={() => setTab("faqs")}
+          >
+            FAQs
           </button>
           <button
             className={`rounded-full px-4 py-1.5 text-sm ${
@@ -54,6 +63,8 @@ export function AutomationPage() {
 
       {tab === "registro" ? (
         <RunLog />
+      ) : tab === "faqs" ? (
+        <FaqList canManage={canManage} />
       ) : isLoading ? (
         <p className="text-sm text-ink-soft">Cargando reglas…</p>
       ) : isError ? (
