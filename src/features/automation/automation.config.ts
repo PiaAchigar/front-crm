@@ -1,5 +1,5 @@
 export type TriggerType = "incoming_message" | "deal_stage_changed";
-export type ActionType = "reply_text" | "change_deal_stage" | "assign_agent";
+export type ActionType = "reply_text" | "change_deal_stage" | "assign_agent" | "reply_faq";
 export type ConditionType = "channel_is" | "message_contains" | "deal_to_stage";
 
 export const TRIGGERS: { value: TriggerType; label: string }[] = [
@@ -11,6 +11,7 @@ export const ACTION_LABELS: Record<ActionType, string> = {
   reply_text: "Responder con un texto",
   change_deal_stage: "Cambiar la etapa del deal",
   assign_agent: "Asignar a una agente",
+  reply_faq: "Responder FAQ (automático)",
 };
 
 export const CONDITION_LABELS: Record<ConditionType, string> = {
@@ -20,7 +21,7 @@ export const CONDITION_LABELS: Record<ConditionType, string> = {
 };
 
 export const TRIGGER_ACTIONS: Record<TriggerType, ActionType[]> = {
-  incoming_message: ["reply_text", "assign_agent"],
+  incoming_message: ["reply_text", "assign_agent", "reply_faq"],
   deal_stage_changed: ["change_deal_stage", "assign_agent"],
 };
 
