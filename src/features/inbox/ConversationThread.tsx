@@ -1,11 +1,15 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchAgents } from "../../api/deals";
+import { fetchMessagesAfter, fetchMessagesBefore, type Message } from "../../api/inbox";
 import { CHANNEL_META } from "../channels/channels.config";
 import { useConversation, useSendMessage, useUpdateConversation } from "./useInbox";
 import { useSimulateInbound } from "../automation/useAutomations";
 import { can } from "../../lib/permissions";
 import { useCrmSession } from "../../lib/session";
+
+const POLL_INTERVAL_MS = 5000;
+const LOAD_OLDER_THRESHOLD_PX = 100;
 
 export function ConversationThread({
   conversationId,
@@ -23,18 +27,110 @@ export function ConversationThread({
   const canManage = can(role, "crm", "manage");
   const [draft, setDraft] = useState("");
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const seededConversationId = useRef<string | null>(null);
+  const scrolledOnMount = useRef<string | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [oldestCursor, setOldestCursor] = useState<string | null>(null);
+  const [newestCursor, setNewestCursor] = useState<string | null>(null);
+  const [hasMoreOlder, setHasMoreOlder] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+
+  // Reinicia el estado local al cambiar de conversación, para no mostrar
+  // mensajes de la anterior mientras carga la nueva.
+  useEffect(() => {
+    seededConversationId.current = null;
+    setMessages([]);
+    setOldestCursor(null);
+    setNewestCursor(null);
+    setHasMoreOlder(false);
+  }, [conversationId]);
+
+  // Siembra el estado local desde la carga inicial de la conversación. Solo
+  // una vez por conversación — de ahí en más el estado local es la fuente
+  // de verdad (cargar-anteriores, polling y envío lo mutan directo).
+  useEffect(() => {
+    if (!data || seededConversationId.current === conversationId) return;
+    seededConversationId.current = conversationId;
+    setMessages(data.messages);
+    setOldestCursor(data.oldestCursor);
+    setNewestCursor(data.newestCursor);
+    setHasMoreOlder(data.hasMoreOlder);
+  }, [data, conversationId]);
+
+  // Scroll al fondo la primera vez que la conversación trae mensajes.
+  useEffect(() => {
+    if (messages.length === 0 || scrolledOnMount.current === conversationId) return;
+    scrolledOnMount.current = conversationId;
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [conversationId, messages]);
+
+  // Polling: mientras el hilo está montado, pregunta cada 5s si hay
+  // mensajes nuevos desde el último cursor conocido (mensajes del cliente
+  // vía webhook, que no disparan ninguna invalidación de React Query).
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const page = await fetchMessagesAfter(conversationId, newestCursor);
+      if (page.messages.length === 0) return;
+      setMessages((prev) => {
+        const knownIds = new Set(prev.map((m) => m.id));
+        const fresh = page.messages.filter((m) => !knownIds.has(m.id));
+        return fresh.length > 0 ? [...prev, ...fresh] : prev;
+      });
+      setNewestCursor(page.newestCursor);
+      const el = scrollRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [conversationId, newestCursor]);
+
+  async function loadOlder() {
+    if (!hasMoreOlder || loadingOlder || !oldestCursor) return;
+    setLoadingOlder(true);
+    const el = scrollRef.current;
+    const prevScrollHeight = el?.scrollHeight ?? 0;
+    try {
+      const page = await fetchMessagesBefore(conversationId, oldestCursor);
+      setMessages((prev) => [...page.messages, ...prev]);
+      setOldestCursor(page.oldestCursor);
+      setHasMoreOlder(page.hasMoreOlder);
+      requestAnimationFrame(() => {
+        if (el) el.scrollTop += el.scrollHeight - prevScrollHeight;
+      });
+    } finally {
+      setLoadingOlder(false);
+    }
+  }
+
+  function handleScroll() {
+    const el = scrollRef.current;
+    if (el && el.scrollTop < LOAD_OLDER_THRESHOLD_PX) loadOlder();
+  }
+
   if (isLoading) return <div className="p-4 text-sm text-ink-soft">Cargando hilo…</div>;
   if (isError || !data)
     return <div className="p-4 text-sm text-red-600">No pudimos cargar la conversación.</div>;
 
-  const { conversation, messages } = data;
+  const { conversation } = data;
   const meta = conversation.channel ? CHANNEL_META[conversation.channel] : null;
 
   function submit() {
     if (send.isPending) return;
     const content = draft.trim();
     if (!content) return;
-    send.mutate({ id: conversationId, content }, { onSuccess: () => setDraft("") });
+    send.mutate(
+      { id: conversationId, content },
+      {
+        onSuccess: (msg) => {
+          setDraft("");
+          setMessages((prev) => [...prev, msg]);
+          setNewestCursor(`${msg.createdAt}_${msg.id}`);
+          const el = scrollRef.current;
+          if (el) el.scrollTop = el.scrollHeight;
+        },
+      },
+    );
   }
 
   return (
@@ -95,7 +191,14 @@ export function ConversationThread({
         )}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-3">
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="min-h-0 flex-1 overflow-y-auto p-3"
+      >
+        {loadingOlder && (
+          <p className="pb-2 text-center text-xs text-ink-soft">Cargando mensajes anteriores…</p>
+        )}
         {messages.length === 0 && (
           <p className="text-sm text-ink-soft">Todavía no hay mensajes en este hilo.</p>
         )}
