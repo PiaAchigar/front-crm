@@ -79,8 +79,13 @@ export function ConversationThread({
         return fresh.length > 0 ? [...prev, ...fresh] : prev;
       });
       setNewestCursor(page.newestCursor);
-      const el = scrollRef.current;
-      if (el) el.scrollTop = el.scrollHeight;
+      // requestAnimationFrame: hay que esperar a que React pinte los
+      // mensajes nuevos en el DOM antes de leer scrollHeight — si no, se
+      // lee el alto viejo (mismo motivo que en loadOlder más abajo).
+      requestAnimationFrame(() => {
+        const el = scrollRef.current;
+        if (el) el.scrollTop = el.scrollHeight;
+      });
     }, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [conversationId, newestCursor]);
@@ -126,8 +131,10 @@ export function ConversationThread({
           setDraft("");
           setMessages((prev) => [...prev, msg]);
           setNewestCursor(`${msg.createdAt}_${msg.id}`);
-          const el = scrollRef.current;
-          if (el) el.scrollTop = el.scrollHeight;
+          requestAnimationFrame(() => {
+            const el = scrollRef.current;
+            if (el) el.scrollTop = el.scrollHeight;
+          });
         },
       },
     );
