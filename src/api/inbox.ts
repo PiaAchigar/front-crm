@@ -25,6 +25,20 @@ export type Message = {
 export type ConversationDetail = {
   conversation: Omit<Conversation, "lastMessagePreview">;
   messages: Message[];
+  oldestCursor: string | null;
+  newestCursor: string | null;
+  hasMoreOlder: boolean;
+};
+
+export type MessagesPage = {
+  messages: Message[];
+  oldestCursor: string | null;
+  hasMoreOlder: boolean;
+};
+
+export type MessagesSince = {
+  messages: Message[];
+  newestCursor: string | null;
 };
 
 export type ConversationFilters = {
@@ -45,6 +59,16 @@ export function fetchConversations(filters: ConversationFilters): Promise<Conver
 
 export function fetchConversation(id: string): Promise<ConversationDetail> {
   return apiFetch(`/api/crm/conversations/${id}`);
+}
+
+export function fetchMessagesBefore(id: string, cursor: string): Promise<MessagesPage> {
+  const qs = new URLSearchParams({ before: cursor });
+  return apiFetch(`/api/crm/conversations/${id}/messages?${qs.toString()}`);
+}
+
+export function fetchMessagesAfter(id: string, cursor: string | null): Promise<MessagesSince> {
+  const qs = new URLSearchParams({ after: cursor ?? "" });
+  return apiFetch(`/api/crm/conversations/${id}/messages?${qs.toString()}`);
 }
 
 export function createConversation(data: {
