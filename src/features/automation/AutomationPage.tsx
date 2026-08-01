@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import type { Rule } from "../../api/automations";
 import { ACTION_LABELS, TRIGGERS } from "./automation.config";
 import { can } from "../../lib/permissions";
@@ -50,6 +51,12 @@ export function AutomationPage() {
           >
             Registro
           </button>
+          <Link
+            to="/automatizacion/llm-config"
+            className="rounded-full px-4 py-1.5 text-sm text-ink-soft hover:bg-surface-high"
+          >
+            🤖 Proveedores IA
+          </Link>
         </div>
         {tab === "reglas" && canManage && (
           <button

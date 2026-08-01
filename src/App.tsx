@@ -6,6 +6,7 @@ import { PipelinePage } from "./features/pipeline/PipelinePage";
 import { InboxPage } from "./features/inbox/InboxPage";
 import { AutomationPage } from "./features/automation/AutomationPage";
 import { ChannelsPage } from "./features/channels/ChannelsPage";
+import { ConfigureLLMPage } from "./features/ai-config/ConfigureLLMPage";
 import { useCrmSession } from "./lib/session";
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/" element={<Navigate to="/pipeline" replace />} />
           <Route path="/inbox" element={<InboxPage />} />
           <Route path="/automatizacion" element={<AutomationPage />} />
+          <Route path="/automatizacion/llm-config" element={<ConfigureLLMPage />} />
           <Route path="/pipeline" element={<PipelinePage />} />
           <Route path="/contactos" element={<ContactsPage />} />
           <Route path="/contactos/:id" element={<ContactDetailPage />} />
