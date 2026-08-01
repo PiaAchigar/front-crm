@@ -24,7 +24,7 @@ export default function App() {
     <BrowserRouter>
       <AppShell role={role}>
         <Routes>
-          <Route path="/" element={<Navigate to="/pipeline" replace />} />
+          <Route path="/" element={<Navigate to="/inbox" replace />} />
           <Route path="/inbox" element={<InboxPage />} />
           <Route path="/automatizacion" element={<AutomationPage />} />
           <Route path="/automatizacion/llm-config" element={<ConfigureLLMPage />} />
