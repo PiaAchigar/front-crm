@@ -4,18 +4,15 @@ import type { ContactInput } from "../../api/contacts";
 import { ApiError } from "../../api/client";
 import { useArchiveContact, useContactDetail, useUpdateContact } from "./useContacts";
 import { ContactFormModal } from "./ContactFormModal";
+import { formatDate, formatDateTimeToDate } from "../../lib/format";
 
 function money(v: string | null): string {
   return v == null ? "—" : `$${v}`;
 }
-function dateShort(v: string | null): string {
-  return v ? new Date(v).toLocaleDateString() : "—";
-}
-function dateOnly(v: string | null): string {
-  // birthdate es "YYYY-MM-DD" (fecha pura): parsear como local (no UTC) para no
-  // mostrar el día anterior en AR.
-  return v ? new Date(`${v}T00:00:00`).toLocaleDateString() : "—";
-}
+// createdAt/appointmentStart son instantes UTC; birthdate es una fecha pura
+// ("YYYY-MM-DD") que no se debe convertir de zona o muestra el día anterior.
+const dateShort = formatDateTimeToDate;
+const dateOnly = formatDate;
 
 export function ContactDetailPage() {
   const { id = "" } = useParams();

@@ -1,4 +1,5 @@
 import { useRuns } from "./useAutomations";
+import { formatDateTime } from "../../lib/format";
 
 export function RunLog() {
   const { data: runs = [], isLoading, isError } = useRuns();
@@ -39,7 +40,7 @@ export function RunLog() {
               </td>
               <td className="max-w-[240px] truncate p-2 text-ink-soft">{r.detail}</td>
               <td className="p-2 text-ink-soft">
-                {new Date(r.createdAt).toLocaleString("es-AR")}
+                {formatDateTime(r.createdAt)}
               </td>
             </tr>
           ))}
