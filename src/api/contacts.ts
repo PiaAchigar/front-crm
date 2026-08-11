@@ -114,3 +114,33 @@ export function archiveContact(id: string): Promise<Contact> {
     body: JSON.stringify({ isArchived: true }),
   });
 }
+
+export type NewClientInput = {
+  name: string;
+  dni: string;
+  phone?: string;
+  email?: string;
+};
+
+export type CustomerSummary = {
+  id: string;
+  contactId: string;
+  dni: string | null;
+  cuit: string | null;
+  creditBalance: string;
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+};
+
+/** Alta de CLIENTE: crea contacto + customer en una transacción del backend.
+ *  Es el mismo endpoint que usa el alta rápida de la Agenda, a propósito —
+ *  quien se cargue acá tiene que poder recibir turnos y facturas, y para eso
+ *  necesita fila en `customers`. `POST /api/crm/contacts` NO sirve: crea solo
+ *  el contacto. */
+export function createClient(data: NewClientInput): Promise<CustomerSummary> {
+  return apiFetch("/api/billing/customers", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}

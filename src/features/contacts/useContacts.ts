@@ -1,7 +1,9 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   type ContactInput,
+  type NewClientInput,
   archiveContact,
+  createClient,
   createContact,
   fetchContact,
   fetchContacts,
@@ -60,5 +62,13 @@ export function useArchiveContact() {
       qc.invalidateQueries({ queryKey: ["contacts"] });
       qc.invalidateQueries({ queryKey: ["contact", id] });
     },
+  });
+}
+
+export function useCreateClient() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: NewClientInput) => createClient(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["contacts"] }),
   });
 }

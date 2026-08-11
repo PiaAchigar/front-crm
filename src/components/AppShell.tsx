@@ -6,7 +6,7 @@ const TABS: { to: string; label: string; icon: string }[] = [
   { to: "/inbox", label: "Inbox", icon: "📥" },
   { to: "/automatizacion", label: "Automatización", icon: "⚙️" },
   { to: "/pipeline", label: "Pipeline", icon: "📊" },
-  { to: "/contactos", label: "Contactos", icon: "👥" },
+  { to: "/contactos", label: "Clientes", icon: "👥" },
   { to: "/canales", label: "Canales", icon: "🔌" },
 ];
 
