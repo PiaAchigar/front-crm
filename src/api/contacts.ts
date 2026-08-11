@@ -71,11 +71,35 @@ export type ContactAppointment = {
   status: string | null;
 };
 
+// `listByCustomerId` hace un `select()` sin proyección: devuelve la fila entera
+// de training_subscriptions.
+export type ContactSubscription = {
+  id: string;
+  activityId: string | null;
+  status: string | null;
+  monthlyAmount: string | null;
+  subscriptionStartDate: string | null;
+  subscriptionEndDate: string | null;
+};
+
+// Campos tomados de `invoiceSummary` en invoices.repo.ts. OJO: son
+// `totalAmount` e `invoiceDate` — NO `total` ni `createdAt`, que no existen.
+export type ContactInvoice = {
+  id: string;
+  invoiceNumber: number | null;
+  invoiceType: string | null;
+  status: string | null;
+  totalAmount: string | null;
+  invoiceDate: string | null;
+};
+
 export type ContactDetail = {
   contact: Contact;
   customer: CustomerAccount | null;
   deals: ContactDeal[];
   appointments: ContactAppointment[];
+  subscriptions: ContactSubscription[];
+  invoices: ContactInvoice[];
 };
 
 // NO llamarlo `ContactsPage`: así se llama el componente de la pantalla, y los

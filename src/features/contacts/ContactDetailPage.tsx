@@ -150,6 +150,64 @@ export function ContactDetailPage() {
         )}
       </section>
 
+      <section>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-soft">
+          Suscripciones
+        </h2>
+        {data.subscriptions.length === 0 ? (
+          <p className="text-sm text-ink-soft">Sin suscripciones.</p>
+        ) : (
+          <table className="w-full text-left text-sm">
+            <thead className="text-ink-soft">
+              <tr>
+                <th className="py-1">Estado</th>
+                <th className="py-1">Cuota</th>
+                <th className="py-1">Desde</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.subscriptions.map((s) => (
+                <tr key={s.id} className="border-t border-surface-high">
+                  <td className="py-1">{s.status ?? "—"}</td>
+                  <td className="py-1">{money(s.monthlyAmount)}</td>
+                  <td className="py-1">{formatDate(s.subscriptionStartDate)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-soft">
+          Facturas
+        </h2>
+        {data.invoices.length === 0 ? (
+          <p className="text-sm text-ink-soft">Sin facturas.</p>
+        ) : (
+          <table className="w-full text-left text-sm">
+            <thead className="text-ink-soft">
+              <tr>
+                <th className="py-1">Fecha</th>
+                <th className="py-1">Número</th>
+                <th className="py-1">Estado</th>
+                <th className="py-1">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.invoices.map((i) => (
+                <tr key={i.id} className="border-t border-surface-high">
+                  <td className="py-1">{formatDateTimeToDate(i.invoiceDate)}</td>
+                  <td className="py-1">{i.invoiceNumber ?? "—"}</td>
+                  <td className="py-1">{i.status ?? "—"}</td>
+                  <td className="py-1">{money(i.totalAmount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
       {editing && (
         <ContactFormModal contact={contact} onClose={() => setEditing(false)} onSave={handleSave} />
       )}
