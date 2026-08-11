@@ -135,6 +135,16 @@ export function archiveContact(id: string): Promise<Contact> {
   });
 }
 
+/** Devuelve un cliente archivado a la operación. Archivar lo saca de TODOS los
+ *  selectores del sistema (agenda, facturación, suscripciones), así que sin esto
+ *  un archivado por error sería irreversible desde la interfaz. */
+export function unarchiveContact(id: string): Promise<Contact> {
+  return apiFetch(`/api/crm/contacts/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ isArchived: false }),
+  });
+}
+
 export type NewClientInput = {
   name: string;
   dni: string;

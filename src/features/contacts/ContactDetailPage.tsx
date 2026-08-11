@@ -2,7 +2,12 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import type { ContactInput } from "../../api/contacts";
 import { ApiError } from "../../api/client";
-import { useArchiveContact, useContactDetail, useUpdateContact } from "./useContacts";
+import {
+  useArchiveContact,
+  useContactDetail,
+  useUnarchiveContact,
+  useUpdateContact,
+} from "./useContacts";
 import { ContactFormModal } from "./ContactFormModal";
 import { formatDate, formatDateTimeToDate } from "../../lib/format";
 
@@ -20,6 +25,7 @@ export function ContactDetailPage() {
   const { data, isLoading, isError, error } = useContactDetail(id);
   const update = useUpdateContact();
   const archive = useArchiveContact();
+  const unarchive = useUnarchiveContact();
   const [editing, setEditing] = useState(false);
 
   if (isLoading) return <p className="text-ink-soft">Cargando...</p>;
@@ -44,8 +50,19 @@ export function ContactDetailPage() {
   }
 
   function handleArchive() {
-    if (!confirm("¿Archivar este contacto? Se ocultará de la lista (no se borra).")) return;
+    if (
+      !confirm(
+        "¿Archivar este cliente?\n\nDeja de aparecer en la lista y en los buscadores de la Agenda, " +
+          "facturación y suscripciones: no se le va a poder agendar ni facturar.\n\n" +
+          "No se borra nada y se puede desarchivar cuando quieras.",
+      )
+    )
+      return;
     archive.mutate(id, { onSuccess: () => navigate("/contactos") });
+  }
+
+  function handleUnarchive() {
+    unarchive.mutate(id);
   }
 
   return (
@@ -57,6 +74,7 @@ export function ContactDetailPage() {
           {contact.isArchived && (
             <div className="mt-1 flex items-center gap-2 text-sm text-ink-soft">
               <span className="rounded-full bg-surface-high px-2 py-0.5">Archivado</span>
+              <span>No aparece en los buscadores de Agenda, facturación ni suscripciones.</span>
             </div>
           )}
         </div>
@@ -64,9 +82,17 @@ export function ContactDetailPage() {
           <button className="rounded-full bg-primary px-4 py-1.5 text-sm text-white hover:bg-primary-dark" onClick={() => setEditing(true)}>
             Editar
           </button>
-          {!contact.isArchived && (
+          {!contact.isArchived ? (
             <button className="rounded-full border border-surface-highest px-4 py-1.5 text-sm text-ink-soft hover:bg-surface-high" onClick={handleArchive}>
               Archivar
+            </button>
+          ) : (
+            <button
+              className="rounded-full border border-surface-highest px-4 py-1.5 text-sm text-ink-soft hover:bg-surface-high disabled:opacity-40"
+              onClick={handleUnarchive}
+              disabled={unarchive.isPending}
+            >
+              {unarchive.isPending ? "Desarchivando…" : "Desarchivar"}
             </button>
           )}
         </div>

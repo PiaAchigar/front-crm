@@ -8,6 +8,7 @@ import {
   fetchContact,
   fetchContacts,
   fetchDeleteImpact,
+  unarchiveContact,
   updateContact,
 } from "../../api/contacts";
 
@@ -51,6 +52,17 @@ export function useArchiveContact() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => archiveContact(id),
+    onSuccess: (_res, id) => {
+      qc.invalidateQueries({ queryKey: ["contacts"] });
+      qc.invalidateQueries({ queryKey: ["contact", id] });
+    },
+  });
+}
+
+export function useUnarchiveContact() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => unarchiveContact(id),
     onSuccess: (_res, id) => {
       qc.invalidateQueries({ queryKey: ["contacts"] });
       qc.invalidateQueries({ queryKey: ["contact", id] });

@@ -3,7 +3,12 @@ import { useNavigate } from "react-router-dom";
 import type { Contact, ContactInput } from "../../api/contacts";
 import { can } from "../../lib/permissions";
 import { useCrmSession } from "../../lib/session";
-import { CONTACTS_PAGE_SIZE, useContactsList, useUpdateContact } from "./useContacts";
+import {
+  CONTACTS_PAGE_SIZE,
+  useContactsList,
+  useUnarchiveContact,
+  useUpdateContact,
+} from "./useContacts";
 import { NewClientModal } from "./NewClientModal";
 import { ContactFormModal } from "./ContactFormModal";
 import { DeleteClientDialog } from "./DeleteClientDialog";
@@ -19,6 +24,7 @@ export function ContactsPage() {
   const [editing, setEditing] = useState<Contact | null>(null);
   const [deleting, setDeleting] = useState<Contact | null>(null);
   const update = useUpdateContact();
+  const unarchive = useUnarchiveContact();
 
   const { data, isLoading } = useContactsList({
     q,
@@ -100,6 +106,19 @@ export function ContactsPage() {
                     >
                       Editar
                     </button>
+                    {c.isArchived && (
+                      <button
+                        className="rounded px-2 py-1 text-xs text-ink-soft hover:bg-surface-highest disabled:opacity-40"
+                        title="Desarchivar"
+                        disabled={unarchive.isPending}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          unarchive.mutate(c.id);
+                        }}
+                      >
+                        Desarchivar
+                      </button>
+                    )}
                     {canDelete && (
                       <button
                         className="rounded px-2 py-1 text-xs text-red-700 hover:bg-red-50"
