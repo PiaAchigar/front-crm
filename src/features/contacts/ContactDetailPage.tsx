@@ -9,6 +9,7 @@ import {
   useUpdateContact,
 } from "./useContacts";
 import { ContactFormModal } from "./ContactFormModal";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { formatDate, formatDateTimeToDate } from "../../lib/format";
 
 function money(v: string | null): string {
@@ -27,6 +28,7 @@ export function ContactDetailPage() {
   const archive = useArchiveContact();
   const unarchive = useUnarchiveContact();
   const [editing, setEditing] = useState(false);
+  const [confirmingArchive, setConfirmingArchive] = useState(false);
 
   if (isLoading) return <p className="text-ink-soft">Cargando...</p>;
   if (isError || !data) {
@@ -38,7 +40,7 @@ export function ContactDetailPage() {
             ? "No encontramos este contacto. Puede que haya sido eliminado."
             : "No pudimos cargar la ficha. Hubo un problema del servidor — probá recargar en un momento."}
         </p>
-        <Link to="/contactos" className="text-primary hover:underline">← Contactos</Link>
+        <Link to="/contactos" className="text-primary hover:underline">← Clientes</Link>
       </div>
     );
   }
@@ -50,15 +52,12 @@ export function ContactDetailPage() {
   }
 
   function handleArchive() {
-    if (
-      !confirm(
-        "¿Archivar este cliente?\n\nDeja de aparecer en la lista y en los buscadores de la Agenda, " +
-          "facturación y suscripciones: no se le va a poder agendar ni facturar.\n\n" +
-          "No se borra nada y se puede desarchivar cuando quieras.",
-      )
-    )
-      return;
-    archive.mutate(id, { onSuccess: () => navigate("/contactos") });
+    archive.mutate(id, {
+      onSuccess: () => {
+        setConfirmingArchive(false);
+        navigate("/contactos");
+      },
+    });
   }
 
   function handleUnarchive() {
@@ -69,7 +68,7 @@ export function ContactDetailPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <Link to="/contactos" className="text-xs text-primary hover:underline">← Contactos</Link>
+          <Link to="/contactos" className="text-xs text-primary hover:underline">← Clientes</Link>
           <h1 className="mt-1 text-2xl font-semibold text-primary">{contact.name}</h1>
           {contact.isArchived && (
             <div className="mt-1 flex items-center gap-2 text-sm text-ink-soft">
@@ -83,7 +82,10 @@ export function ContactDetailPage() {
             Editar
           </button>
           {!contact.isArchived ? (
-            <button className="rounded-full border border-surface-highest px-4 py-1.5 text-sm text-ink-soft hover:bg-surface-high" onClick={handleArchive}>
+            <button
+              className="rounded-full border border-surface-highest px-4 py-1.5 text-sm text-ink-soft hover:bg-surface-high"
+              onClick={() => setConfirmingArchive(true)}
+            >
               Archivar
             </button>
           ) : (
@@ -237,6 +239,24 @@ export function ContactDetailPage() {
 
       {editing && (
         <ContactFormModal contact={contact} onClose={() => setEditing(false)} onSave={handleSave} />
+      )}
+
+      {confirmingArchive && (
+        <ConfirmDialog
+          title={`¿Archivar a ${contact.name ?? "este cliente"}?`}
+          description="Archivar saca al cliente de circulación, pero no borra nada."
+          points={[
+            "Deja de aparecer en los buscadores de la Agenda, facturación y suscripciones: no se le va a poder agendar ni facturar.",
+            "Su historial de turnos, facturas y pagos queda intacto.",
+            "Podés desarchivarlo cuando quieras, desde la lista de clientes.",
+          ]}
+          confirmLabel="Archivar cliente"
+          pendingLabel="Archivando…"
+          isPending={archive.isPending}
+          error={archive.error ? (archive.error as Error).message : null}
+          onConfirm={handleArchive}
+          onClose={() => setConfirmingArchive(false)}
+        />
       )}
     </div>
   );
