@@ -1,6 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   type ContactInput,
+  type ContactSort,
   type NewClientInput,
   archiveContact,
   createClient,
@@ -17,6 +18,7 @@ export const CONTACTS_PAGE_SIZE = 50;
 export function useContactsList(params: {
   q?: string;
   includeArchived?: boolean;
+  sort?: ContactSort;
   limit: number;
   offset: number;
 }) {

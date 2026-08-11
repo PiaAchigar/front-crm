@@ -106,15 +106,20 @@ export type ContactDetail = {
 // dos se importan en el mismo archivo.
 export type ContactListPage = { items: Contact[]; total: number };
 
+/** "recent" = alta más nueva primero, el orden histórico de la pantalla. */
+export type ContactSort = "recent" | "nameAsc" | "nameDesc";
+
 export function fetchContacts(params: {
   q?: string;
   includeArchived?: boolean;
+  sort?: ContactSort;
   limit: number;
   offset: number;
 }): Promise<ContactListPage> {
   const qs = new URLSearchParams();
   if (params.q) qs.set("q", params.q);
   if (params.includeArchived) qs.set("includeArchived", "true");
+  if (params.sort) qs.set("sort", params.sort);
   qs.set("limit", String(params.limit));
   qs.set("offset", String(params.offset));
   return apiFetch(`/api/crm/contacts?${qs.toString()}`);

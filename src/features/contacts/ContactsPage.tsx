@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import type { Contact, ContactInput } from "../../api/contacts";
+import type { Contact, ContactInput, ContactSort } from "../../api/contacts";
 import { can } from "../../lib/permissions";
 import { useCrmSession } from "../../lib/session";
 import {
@@ -19,6 +19,7 @@ export function ContactsPage() {
   const canDelete = can(role, "crm", "manage");
   const [q, setQ] = useState("");
   const [includeArchived, setIncludeArchived] = useState(false);
+  const [sort, setSort] = useState<ContactSort>("recent");
   const [creating, setCreating] = useState(false);
   const [page, setPage] = useState(0);
   const [editing, setEditing] = useState<Contact | null>(null);
@@ -29,16 +30,25 @@ export function ContactsPage() {
   const { data, isLoading } = useContactsList({
     q,
     includeArchived,
+    sort,
     limit: CONTACTS_PAGE_SIZE,
     offset: page * CONTACTS_PAGE_SIZE,
   });
   const contacts = data?.items ?? [];
   const total = data?.total ?? 0;
 
-  // Volver a la página 1 cuando cambia el filtro, o quedaría en una página que ya no existe.
+  // Volver a la página 1 cuando cambia el filtro o el orden, o quedaría en una
+  // página que ya no existe — o peor, en la página 40 de una lista recién dada
+  // vuelta, mirando cualquier cosa.
   useEffect(() => {
     setPage(0);
-  }, [q, includeArchived]);
+  }, [q, includeArchived, sort]);
+
+  // A→Z, Z→A y de vuelta al orden por fecha de alta.
+  function toggleNameSort() {
+    setSort((s) => (s === "nameAsc" ? "nameDesc" : s === "nameDesc" ? "recent" : "nameAsc"));
+  }
+  const sortArrow = sort === "nameAsc" ? "▲" : sort === "nameDesc" ? "▼" : "";
 
   function handleUpdate(data: ContactInput) {
     if (!editing) return;
@@ -78,7 +88,23 @@ export function ContactsPage() {
         <table className="w-full text-left text-sm">
           <thead className="text-ink-soft">
             <tr>
-              <th className="py-2">Nombre</th>
+              <th className="py-2">
+                <button
+                  type="button"
+                  className="flex items-center gap-1 rounded px-1 py-0.5 hover:bg-surface-high hover:text-ink"
+                  onClick={toggleNameSort}
+                  title={
+                    sort === "nameAsc"
+                      ? "Ordenado A→Z. Clickeá para Z→A"
+                      : sort === "nameDesc"
+                        ? "Ordenado Z→A. Clickeá para volver al orden por fecha de alta"
+                        : "Ordenado por fecha de alta. Clickeá para ordenar A→Z"
+                  }
+                >
+                  Nombre
+                  <span className="text-[10px]">{sortArrow}</span>
+                </button>
+              </th>
               <th className="py-2">Teléfono</th>
               <th className="py-2">Email</th>
               <th className="py-2 text-right">Acciones</th>
