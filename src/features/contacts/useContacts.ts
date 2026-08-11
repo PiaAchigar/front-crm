@@ -5,8 +5,10 @@ import {
   archiveContact,
   createClient,
   createContact,
+  deleteClientPermanently,
   fetchContact,
   fetchContacts,
+  fetchDeleteImpact,
   updateContact,
 } from "../../api/contacts";
 
@@ -69,6 +71,22 @@ export function useCreateClient() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: NewClientInput) => createClient(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["contacts"] }),
+  });
+}
+
+export function useDeleteImpact(id: string | null) {
+  return useQuery({
+    queryKey: ["contact-delete-impact", id],
+    queryFn: () => fetchDeleteImpact(id!),
+    enabled: !!id,
+  });
+}
+
+export function useDeleteClient() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteClientPermanently(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["contacts"] }),
   });
 }

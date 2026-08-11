@@ -4,6 +4,7 @@ import type { Contact, ContactInput } from "../../api/contacts";
 import { CONTACTS_PAGE_SIZE, useContactsList, useUpdateContact } from "./useContacts";
 import { NewClientModal } from "./NewClientModal";
 import { ContactFormModal } from "./ContactFormModal";
+import { DeleteClientDialog } from "./DeleteClientDialog";
 
 export function ContactsPage() {
   const navigate = useNavigate();
@@ -12,6 +13,7 @@ export function ContactsPage() {
   const [creating, setCreating] = useState(false);
   const [page, setPage] = useState(0);
   const [editing, setEditing] = useState<Contact | null>(null);
+  const [deleting, setDeleting] = useState<Contact | null>(null);
   const update = useUpdateContact();
 
   const { data, isLoading } = useContactsList({
@@ -99,6 +101,7 @@ export function ContactsPage() {
                       title="Eliminar"
                       onClick={(e) => {
                         e.stopPropagation();
+                        setDeleting(c);
                       }}
                     >
                       Eliminar
@@ -143,6 +146,9 @@ export function ContactsPage() {
           onClose={() => setEditing(null)}
           onSave={handleUpdate}
         />
+      )}
+      {deleting && (
+        <DeleteClientDialog contact={deleting} onClose={() => setDeleting(null)} />
       )}
     </div>
   );

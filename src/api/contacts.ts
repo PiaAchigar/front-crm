@@ -144,3 +144,30 @@ export function createClient(data: NewClientInput): Promise<CustomerSummary> {
     body: JSON.stringify(data),
   });
 }
+
+export type ClientDeleteImpact = {
+  blocked: boolean;
+  blockReason?: string;
+  history: {
+    invoices: number;
+    payments: number;
+    appointments: number;
+    subscriptions: number;
+    enrollments: number;
+  };
+  cascade: {
+    conversations: number;
+    messages: number;
+    deals: number;
+    callLogs: number;
+    analyticsEvents: number;
+  };
+};
+
+export function fetchDeleteImpact(id: string): Promise<ClientDeleteImpact> {
+  return apiFetch(`/api/crm/contacts/${id}/delete-impact`);
+}
+
+export function deleteClientPermanently(id: string): Promise<{ deleted: boolean }> {
+  return apiFetch(`/api/crm/contacts/${id}/permanent`, { method: "DELETE" });
+}
