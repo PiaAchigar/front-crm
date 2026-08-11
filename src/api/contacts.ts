@@ -78,15 +78,21 @@ export type ContactDetail = {
   appointments: ContactAppointment[];
 };
 
+// NO llamarlo `ContactsPage`: así se llama el componente de la pantalla, y los
+// dos se importan en el mismo archivo.
+export type ContactListPage = { items: Contact[]; total: number };
+
 export function fetchContacts(params: {
-  status?: string;
   q?: string;
   includeArchived?: boolean;
-}): Promise<Contact[]> {
+  limit: number;
+  offset: number;
+}): Promise<ContactListPage> {
   const qs = new URLSearchParams();
-  if (params.status) qs.set("status", params.status);
   if (params.q) qs.set("q", params.q);
   if (params.includeArchived) qs.set("includeArchived", "true");
+  qs.set("limit", String(params.limit));
+  qs.set("offset", String(params.offset));
   return apiFetch(`/api/crm/contacts?${qs.toString()}`);
 }
 

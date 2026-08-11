@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useContactsList } from "../contacts/useContacts";
+import { CONTACTS_PAGE_SIZE, useContactsList } from "../contacts/useContacts";
 
 /** Alta manual de un deal en el pipeline (antes de que exista turno o seña).
  *  `registerDeposit` en el backend lo encuentra después por contacto y lo
@@ -15,7 +15,8 @@ export function DealFormModal({
   saving?: boolean;
   error?: string | null;
 }) {
-  const { data: contacts = [], isLoading } = useContactsList({});
+  const { data, isLoading } = useContactsList({ limit: CONTACTS_PAGE_SIZE, offset: 0 });
+  const contacts = data?.items ?? [];
   const [contactId, setContactId] = useState("");
   const [title, setTitle] = useState("");
 

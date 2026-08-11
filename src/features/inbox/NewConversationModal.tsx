@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { ChannelType } from "../../api/channels";
-import { useContactsList } from "../contacts/useContacts";
+import { CONTACTS_PAGE_SIZE, useContactsList } from "../contacts/useContacts";
 import { useCreateConversation } from "./useInbox";
 
 const CHANNELS: { value: ChannelType; label: string }[] = [
@@ -17,7 +17,8 @@ export function NewConversationModal({
   onClose: () => void;
   onCreated: (id: string) => void;
 }) {
-  const { data: contacts = [], isLoading } = useContactsList({});
+  const { data, isLoading } = useContactsList({ limit: CONTACTS_PAGE_SIZE, offset: 0 });
+  const contacts = data?.items ?? [];
   const create = useCreateConversation();
   const [contactId, setContactId] = useState("");
   const [channel, setChannel] = useState<ChannelType>("whatsapp");

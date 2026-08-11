@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   type ContactInput,
   archiveContact,
@@ -8,10 +8,19 @@ import {
   updateContact,
 } from "../../api/contacts";
 
-export function useContactsList(params: { status?: string; q?: string; includeArchived?: boolean }) {
+export const CONTACTS_PAGE_SIZE = 50;
+
+export function useContactsList(params: {
+  q?: string;
+  includeArchived?: boolean;
+  limit: number;
+  offset: number;
+}) {
   return useQuery({
     queryKey: ["contacts", params],
     queryFn: () => fetchContacts(params),
+    // Sin esto la tabla parpadea en blanco en cada cambio de página.
+    placeholderData: keepPreviousData,
   });
 }
 

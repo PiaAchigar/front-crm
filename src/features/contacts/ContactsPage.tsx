@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { ContactInput } from "../../api/contacts";
-import { useContactsList, useCreateContact } from "./useContacts";
+import { CONTACTS_PAGE_SIZE, useContactsList, useCreateContact } from "./useContacts";
 import { ContactFormModal } from "./ContactFormModal";
 
 export function ContactsPage() {
@@ -10,13 +10,22 @@ export function ContactsPage() {
   const [q, setQ] = useState("");
   const [includeArchived, setIncludeArchived] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [page, setPage] = useState(0);
 
-  const { data: contacts = [], isLoading } = useContactsList({
-    status: status || undefined,
+  const { data, isLoading } = useContactsList({
     q,
     includeArchived,
+    limit: CONTACTS_PAGE_SIZE,
+    offset: page * CONTACTS_PAGE_SIZE,
   });
+  const contacts = data?.items ?? [];
+  const total = data?.total ?? 0;
   const create = useCreateContact();
+
+  // Volver a la página 1 cuando cambia el filtro, o quedaría en una página que ya no existe.
+  useEffect(() => {
+    setPage(0);
+  }, [q, includeArchived]);
 
   function handleSave(data: ContactInput) {
     create.mutate(data, { onSuccess: () => setCreating(false) });
@@ -86,6 +95,31 @@ export function ContactsPage() {
             ))}
           </tbody>
         </table>
+      )}
+
+      {total > 0 && (
+        <div className="flex items-center justify-between text-sm text-ink-soft">
+          <span>
+            Mostrando {page * CONTACTS_PAGE_SIZE + 1}–
+            {Math.min((page + 1) * CONTACTS_PAGE_SIZE, total)} de {total}
+          </span>
+          <div className="flex gap-2">
+            <button
+              className="rounded border border-surface-highest px-3 py-1 disabled:opacity-40"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0}
+            >
+              Anterior
+            </button>
+            <button
+              className="rounded border border-surface-highest px-3 py-1 disabled:opacity-40"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={(page + 1) * CONTACTS_PAGE_SIZE >= total}
+            >
+              Siguiente
+            </button>
+          </div>
+        </div>
       )}
 
       {creating && (
