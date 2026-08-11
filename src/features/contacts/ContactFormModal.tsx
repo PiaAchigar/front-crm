@@ -16,9 +16,6 @@ export function ContactFormModal({
   const [name, setName] = useState(contact?.name ?? "");
   const [phone, setPhone] = useState(contact?.phone ?? "");
   const [email, setEmail] = useState(contact?.email ?? "");
-  const [status, setStatus] = useState<ContactInput["status"]>(
-    (contact?.status as ContactInput["status"]) ?? "prospect",
-  );
   const [whatsappId, setWhatsappId] = useState(contact?.whatsappId ?? "");
   const [instagramId, setInstagramId] = useState(contact?.instagramId ?? "");
   const [facebookId, setFacebookId] = useState(contact?.facebookId ?? "");
@@ -42,7 +39,6 @@ export function ContactFormModal({
       name: name.trim(),
       phone: clean(phone),
       email: clean(email),
-      status,
       whatsappId: clean(whatsappId),
       instagramId: clean(instagramId),
       facebookId: clean(facebookId),
@@ -70,11 +66,6 @@ export function ContactFormModal({
             <input className={field} placeholder="Nombre *" value={name} onChange={(e) => setName(e.target.value)} />
             <input className={field} placeholder="Teléfono" value={phone} onChange={(e) => setPhone(e.target.value)} />
             <input className={field} placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-            <select className={field} value={status} onChange={(e) => setStatus(e.target.value as ContactInput["status"])}>
-              <option value="prospect">Prospect</option>
-              <option value="customer">Customer</option>
-              <option value="inactive">Inactive</option>
-            </select>
           </div>
 
           <div className="flex flex-col gap-3">

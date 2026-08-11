@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Contact, ContactInput } from "../../api/contacts";
+import { can } from "../../lib/permissions";
+import { useCrmSession } from "../../lib/session";
 import { CONTACTS_PAGE_SIZE, useContactsList, useUpdateContact } from "./useContacts";
 import { NewClientModal } from "./NewClientModal";
 import { ContactFormModal } from "./ContactFormModal";
@@ -8,6 +10,8 @@ import { DeleteClientDialog } from "./DeleteClientDialog";
 
 export function ContactsPage() {
   const navigate = useNavigate();
+  const { role } = useCrmSession();
+  const canDelete = can(role, "crm", "manage");
   const [q, setQ] = useState("");
   const [includeArchived, setIncludeArchived] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -96,16 +100,18 @@ export function ContactsPage() {
                     >
                       Editar
                     </button>
-                    <button
-                      className="rounded px-2 py-1 text-xs text-red-700 hover:bg-red-50"
-                      title="Eliminar"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeleting(c);
-                      }}
-                    >
-                      Eliminar
-                    </button>
+                    {canDelete && (
+                      <button
+                        className="rounded px-2 py-1 text-xs text-red-700 hover:bg-red-50"
+                        title="Eliminar"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleting(c);
+                        }}
+                      >
+                        Eliminar
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>

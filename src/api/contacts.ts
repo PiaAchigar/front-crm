@@ -124,10 +124,6 @@ export function fetchContact(id: string): Promise<ContactDetail> {
   return apiFetch(`/api/crm/contacts/${id}`);
 }
 
-export function createContact(data: ContactInput): Promise<Contact> {
-  return apiFetch("/api/crm/contacts", { method: "POST", body: JSON.stringify(data) });
-}
-
 export function updateContact(id: string, data: Partial<ContactInput>): Promise<Contact> {
   return apiFetch(`/api/crm/contacts/${id}`, { method: "PATCH", body: JSON.stringify(data) });
 }

@@ -54,10 +54,11 @@ export function ContactDetailPage() {
         <div>
           <Link to="/contactos" className="text-xs text-primary hover:underline">← Contactos</Link>
           <h1 className="mt-1 text-2xl font-semibold text-primary">{contact.name}</h1>
-          <div className="mt-1 flex items-center gap-2 text-sm text-ink-soft">
-            <span className="rounded-full bg-surface-high px-2 py-0.5">{contact.status ?? "—"}</span>
-            {contact.isArchived && <span className="rounded-full bg-surface-high px-2 py-0.5">Archivado</span>}
-          </div>
+          {contact.isArchived && (
+            <div className="mt-1 flex items-center gap-2 text-sm text-ink-soft">
+              <span className="rounded-full bg-surface-high px-2 py-0.5">Archivado</span>
+            </div>
+          )}
         </div>
         <div className="flex gap-2">
           <button className="rounded-full bg-primary px-4 py-1.5 text-sm text-white hover:bg-primary-dark" onClick={() => setEditing(true)}>
@@ -150,7 +151,7 @@ export function ContactDetailPage() {
         )}
       </section>
 
-      <section>
+      <section className="rounded-xl border border-surface-high bg-surface-low p-4">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-soft">
           Suscripciones
         </h2>
@@ -178,7 +179,7 @@ export function ContactDetailPage() {
         )}
       </section>
 
-      <section>
+      <section className="rounded-xl border border-surface-high bg-surface-low p-4">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-soft">
           Facturas
         </h2>

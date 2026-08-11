@@ -65,7 +65,7 @@ export function DeleteClientDialog({
             </p>
             <p className="text-ink-soft">
               No se puede eliminar sin perder el historial fiscal. Se va a archivar:
-              sale de la lista y no se puede volver a usar, pero el historial queda intacto.
+              sale de la lista de Clientes; el historial queda intacto.
             </p>
           </div>
         ) : (

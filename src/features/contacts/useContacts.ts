@@ -4,7 +4,6 @@ import {
   type NewClientInput,
   archiveContact,
   createClient,
-  createContact,
   deleteClientPermanently,
   fetchContact,
   fetchContacts,
@@ -33,14 +32,6 @@ export function useContactDetail(id: string) {
     queryKey: ["contact", id],
     queryFn: () => fetchContact(id),
     enabled: !!id,
-  });
-}
-
-export function useCreateContact() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (data: ContactInput) => createContact(data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["contacts"] }),
   });
 }
 
