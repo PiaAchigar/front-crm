@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CONTACTS_PAGE_SIZE, useContactsList } from "./useContacts";
+import type { Contact, ContactInput } from "../../api/contacts";
+import { CONTACTS_PAGE_SIZE, useContactsList, useUpdateContact } from "./useContacts";
 import { NewClientModal } from "./NewClientModal";
+import { ContactFormModal } from "./ContactFormModal";
 
 export function ContactsPage() {
   const navigate = useNavigate();
@@ -9,6 +11,8 @@ export function ContactsPage() {
   const [includeArchived, setIncludeArchived] = useState(false);
   const [creating, setCreating] = useState(false);
   const [page, setPage] = useState(0);
+  const [editing, setEditing] = useState<Contact | null>(null);
+  const update = useUpdateContact();
 
   const { data, isLoading } = useContactsList({
     q,
@@ -23,6 +27,11 @@ export function ContactsPage() {
   useEffect(() => {
     setPage(0);
   }, [q, includeArchived]);
+
+  function handleUpdate(data: ContactInput) {
+    if (!editing) return;
+    update.mutate({ id: editing.id, data }, { onSuccess: () => setEditing(null) });
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -60,6 +69,7 @@ export function ContactsPage() {
               <th className="py-2">Nombre</th>
               <th className="py-2">Teléfono</th>
               <th className="py-2">Email</th>
+              <th className="py-2 text-right">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -72,6 +82,29 @@ export function ContactsPage() {
                 <td className="py-2">{c.name}{c.isArchived ? " (archivado)" : ""}</td>
                 <td className="py-2">{c.phone}</td>
                 <td className="py-2">{c.email}</td>
+                <td className="py-2 text-right">
+                  <div className="flex justify-end gap-2">
+                    <button
+                      className="rounded px-2 py-1 text-xs text-ink-soft hover:bg-surface-highest"
+                      title="Editar"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditing(c);
+                      }}
+                    >
+                      Editar
+                    </button>
+                    <button
+                      className="rounded px-2 py-1 text-xs text-red-700 hover:bg-red-50"
+                      title="Eliminar"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -104,6 +137,13 @@ export function ContactsPage() {
       )}
 
       {creating && <NewClientModal onClose={() => setCreating(false)} />}
+      {editing && (
+        <ContactFormModal
+          contact={editing}
+          onClose={() => setEditing(null)}
+          onSave={handleUpdate}
+        />
+      )}
     </div>
   );
 }
