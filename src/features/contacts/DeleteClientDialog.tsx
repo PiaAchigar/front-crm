@@ -11,7 +11,13 @@ export function DeleteClientDialog({
   contact: Contact;
   onClose: () => void;
 }) {
-  const { data: impact, isLoading } = useDeleteImpact(contact.id);
+  const {
+    data: impact,
+    isLoading,
+    error: impactError,
+    refetch: refetchImpact,
+    isFetching: isRefetchingImpact,
+  } = useDeleteImpact(contact.id);
   const del = useDeleteClient();
   const archive = useArchiveContact();
 
@@ -35,7 +41,22 @@ export function DeleteClientDialog({
       <div className="w-full max-w-md rounded-xl bg-surface-low p-5">
         <h2 className="mb-3 text-lg font-semibold text-ink">Eliminar cliente</h2>
 
-        {isLoading || !impact ? (
+        {isLoading ? (
+          <p className="text-sm text-ink-soft">Revisando el historial…</p>
+        ) : impactError && !impact ? (
+          <div className="space-y-2 text-sm">
+            <p className="rounded bg-red-50 px-3 py-2 text-red-800">
+              No se pudo revisar el historial: {(impactError as Error).message}
+            </p>
+            <button
+              className="rounded-full border border-surface-highest px-4 py-1.5 text-sm text-ink-soft disabled:opacity-40"
+              onClick={() => refetchImpact()}
+              disabled={isRefetchingImpact}
+            >
+              {isRefetchingImpact ? "Reintentando…" : "Reintentar"}
+            </button>
+          </div>
+        ) : !impact ? (
           <p className="text-sm text-ink-soft">Revisando el historial…</p>
         ) : impact.blocked ? (
           <div className="space-y-2 text-sm">
