@@ -31,6 +31,7 @@ export function DeleteClientDialog({
         [impact.history.appointments, "turno(s)"],
         [impact.history.subscriptions, "suscripción(es)"],
         [impact.history.enrollments, "inscripción(es)"],
+        [impact.history.creditMovements, "movimiento(s) de saldo a favor"],
       ]
         .filter(([n]) => (n as number) > 0)
         .map(([n, label]) => `${n} ${label}`)

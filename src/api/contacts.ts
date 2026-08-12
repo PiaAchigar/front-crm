@@ -189,6 +189,9 @@ export type ClientDeleteImpact = {
     appointments: number;
     subscriptions: number;
     enrollments: number;
+    /** Movimientos de saldo a favor (migración 1.25.0). Bloquean el borrado:
+     *  la FK es ON DELETE RESTRICT. */
+    creditMovements: number;
   };
   cascade: {
     conversations: number;
