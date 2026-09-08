@@ -10,6 +10,7 @@ import {
 } from "./useContacts";
 import { ContactFormModal } from "./ContactFormModal";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { ComprasCard } from "../compras/ComprasCard";
 import { formatDate, formatDateTimeToDate } from "../../lib/format";
 
 function money(v: string | null): string {
@@ -129,6 +130,10 @@ export function ContactDetailPage() {
           </dl>
         </section>
       )}
+
+      {/* Compras: packs, combos y servicios pagados por adelantado. Necesita la
+          cuenta de cliente — sin ella no hay a quién asociarle la compra. */}
+      {customer && <ComprasCard customerId={customer.id} />}
 
       {/* Deals */}
       <section className="rounded-xl border border-surface-high bg-surface-low p-4">
