@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ItemDeCatalogo, OrigenVenta } from "../../api/compras";
 import { pesos, saldoQueEntra } from "../../lib/compras-ui";
 import { useCatalogoVendible, useCotizacion, useVender } from "./useCompras";
+import { CobrarPaso } from "./CobrarPaso";
 
 /**
  * Vender: elegir qué, cuántas sesiones y con qué promo.
@@ -40,6 +41,14 @@ export function VenderModal({
   const [promotionId, setPromotionId] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [usarSaldo, setUsarSaldo] = useState(false);
+  // Una vez vendido, el modal NO cierra: pasa a cobrar. La venta ya está
+  // hecha, así que esto sólo decide si se cobra ahora o después.
+  const [vendida, setVendida] = useState<{
+    id: string;
+    descripcion: string;
+    pendiente: number;
+    minimo: number;
+  } | null>(null);
 
   const cotizacion = useCotizacion({
     origen: (elegido?.origen ?? null) as OrigenVenta | null,
@@ -83,7 +92,42 @@ export function VenderModal({
     if (!q) return;
     vender.mutate(
       { ...q, notes: notes.trim() || null, usarSaldo: conSaldo },
-      { onSuccess: onClose },
+      {
+        onSuccess: (compra) => {
+          const yaPagado = compra.pagadoConSaldo ?? 0;
+          setVendida({
+            id: compra.id,
+            descripcion: q.description,
+            pendiente: Math.max(0, q.finalAmount - yaPagado),
+            // El 40% es sobre el ACUMULADO: lo que el saldo a favor ya cubrió
+            // cuenta, así que el mínimo es lo que falte para llegar.
+            minimo: Math.max(
+              0,
+              Math.min(
+                q.finalAmount - yaPagado,
+                Math.round(q.finalAmount * 0.4) - yaPagado,
+              ),
+            ),
+          });
+        },
+      },
+    );
+  }
+
+  if (vendida) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="w-full max-w-md rounded-xl bg-surface-low">
+          <CobrarPaso
+            compraId={vendida.id}
+            customerId={customerId}
+            descripcion={vendida.descripcion}
+            pendiente={vendida.pendiente}
+            minimo={vendida.minimo}
+            onListo={onClose}
+          />
+        </div>
+      </div>
     );
   }
 

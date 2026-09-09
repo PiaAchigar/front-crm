@@ -115,7 +115,9 @@ export function cotizarVenta(input: {
 export function venderCompra(
   input: Cotizacion & { customerId: string; notes?: string | null; usarSaldo?: number },
 ) {
-  return apiFetch<Compra>("/api/crm/purchases", {
+  // `pagadoConSaldo` dice cuánto cubrió el saldo a favor, que es lo que el
+  // paso de cobro necesita para saber qué falta.
+  return apiFetch<Compra & { pagadoConSaldo?: number }>("/api/crm/purchases", {
     method: "POST",
     body: JSON.stringify(input),
   });
@@ -196,4 +198,24 @@ export function vencerSaldo(customerId: string) {
     `/api/crm/credits/${customerId}/expire`,
     { method: "POST" },
   );
+}
+
+export type MedioDePago = "cash" | "bank_transfer" | "mercadopago" | "debit_card" | "credit_card";
+
+/** Cuánto falta cobrar de una compra y cuál es el mínimo de ahora. */
+export type EstadoDeCobro = {
+  pendiente: number;
+  minimo: number;
+  sugerido: number;
+  faltaElMinimo: boolean;
+};
+
+export function cobrarCompra(
+  id: string,
+  input: { amount: number; method: MedioDePago; wantsInvoice: boolean; notes?: string | null },
+): Promise<EstadoDeCobro> {
+  return apiFetch(`/api/crm/purchases/${id}/checkout`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }

@@ -20,7 +20,8 @@ const catalogo = {
   ],
 };
 
-let cuerposDePost: unknown[] = [];
+let cuerposDePost: any[] = [];
+let cobros: any[] = [];
 
 function cotizacionDe(body: { sessions: number; promotionId?: string | null }) {
   const base = 65000 * body.sessions;
@@ -48,6 +49,7 @@ function wrapper({ children }: { children: ReactNode }) {
 
 beforeEach(() => {
   cuerposDePost = [];
+  cobros = [];
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
@@ -59,9 +61,18 @@ beforeEach(() => {
         const body = JSON.parse(String(init?.body));
         return { ok: true, status: 200, json: async () => cotizacionDe(body) };
       }
+      if (u.includes("/checkout")) {
+        cobros.push(JSON.parse(String(init?.body)));
+        return { ok: true, status: 201, json: async () => ({ pendiente: 0, minimo: 0, sugerido: 0, faltaElMinimo: false }) };
+      }
       if (u.endsWith("/purchases")) {
-        cuerposDePost.push(JSON.parse(String(init?.body)));
-        return { ok: true, status: 201, json: async () => ({ id: "cp-nueva" }) };
+        const body = JSON.parse(String(init?.body));
+        cuerposDePost.push(body);
+        return {
+          ok: true,
+          status: 201,
+          json: async () => ({ id: "cp-nueva", pagadoConSaldo: body.usarSaldo ?? 0 }),
+        };
       }
       return { ok: true, status: 200, json: async () => ({}) };
     }),
@@ -200,12 +211,80 @@ describe("VenderModal", () => {
     expect(screen.getByRole("button", { name: /^vender$/i })).toBeDisabled();
   });
 
-  it("al vender se cierra", async () => {
+  it("al vender NO se cierra: pasa a cobrar", async () => {
+    // Antes cerraba y la compra quedaba con $0 pagado diciendo "Debe
+    // $166.000", con la clienta esperando en el mostrador.
     const onClose = vi.fn();
     render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={onClose} />, { wrapper });
     await elegirCuerpoFull();
     await screen.findByText("$195.000");
     await userEvent.click(screen.getByRole("button", { name: /^vender$/i }));
+    expect(await screen.findByRole("heading", { name: /^cobrar$/i })).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+});
+
+describe("VenderModal — el paso de cobro", () => {
+  async function venderYLlegarACobrar() {
+    await elegirCuerpoFull();
+    await screen.findByText("$195.000");
+    await userEvent.click(screen.getByRole("button", { name: /^vender$/i }));
+    await screen.findByRole("heading", { name: /^cobrar$/i });
+  }
+
+  it("propone cobrar todo", async () => {
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await venderYLlegarACobrar();
+    expect(screen.getByLabelText(/monto/i)).toHaveValue(166000);
+  });
+
+  it("ofrece la seña del 40%", async () => {
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await venderYLlegarACobrar();
+    await userEvent.click(screen.getByRole("button", { name: /seña 40%/i }));
+    expect(screen.getByLabelText(/monto/i)).toHaveValue(66400);
+  });
+
+  it("avisa mientras se escribe si el monto no llega al mínimo", async () => {
+    // Al lado del número y no como error después de apretar: el que cobra
+    // está escribiendo y tiene que verlo mientras.
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await venderYLlegarACobrar();
+    const monto = screen.getByLabelText(/monto/i);
+    await userEvent.clear(monto);
+    await userEvent.type(monto, "50000");
+    expect(await screen.findByText(/al menos \$66\.400/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^cobrar \$/i })).toBeDisabled();
+  });
+
+  it("cobra con el medio y el tilde de factura elegidos", async () => {
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await venderYLlegarACobrar();
+    await userEvent.selectOptions(screen.getByLabelText(/medio de pago/i), "debit_card");
+    await userEvent.click(screen.getByLabelText(/lleva factura/i));
+    await userEvent.click(screen.getByRole("button", { name: /^cobrar \$/i }));
+    await waitFor(() => expect(cobros).toHaveLength(1));
+    expect(cobros[0]).toMatchObject({ amount: 166000, method: "debit_card", wantsInvoice: true });
+  });
+
+  it("se puede cobrar después: la venta ya está hecha", async () => {
+    const onClose = vi.fn();
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={onClose} />, { wrapper });
+    await venderYLlegarACobrar();
+    await userEvent.click(screen.getByRole("button", { name: /cobrar después/i }));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(cobros).toHaveLength(0);
+  });
+
+  it("con saldo a favor aplicado, sólo se cobra lo que falta", async () => {
+    // El saldo cubrió $110.667 de $166.000: quedan $55.333, y no hay mínimo
+    // porque la clienta ya puso más del 40%.
+    render(<VenderModal customerId="cu1" saldoAFavor={110667} onClose={() => {}} />, { wrapper });
+    await elegirCuerpoFull();
+    await userEvent.click(await screen.findByLabelText(/saldo a favor/i));
+    await userEvent.click(screen.getByRole("button", { name: /^vender$/i }));
+    await screen.findByRole("heading", { name: /^cobrar$/i });
+    expect(screen.getByLabelText(/monto/i)).toHaveValue(55333);
+    expect(screen.queryByText(/mínimo del primer pago/i)).not.toBeInTheDocument();
   });
 });

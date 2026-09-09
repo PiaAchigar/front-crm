@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   type Cotizacion,
+  type MedioDePago,
   type OrigenVenta,
   cancelarCompra,
+  cobrarCompra,
   cotizarVenta,
   devolverPlata,
   eliminarCompra,
@@ -138,6 +140,23 @@ export function useVencerSaldo() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["saldos-vencidos"] });
       // El saldo de la ficha acaba de cambiar.
+      qc.invalidateQueries({ queryKey: ["contact"] });
+    },
+  });
+}
+
+export function useCobrarCompra(customerId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      id: string;
+      amount: number;
+      method: MedioDePago;
+      wantsInvoice: boolean;
+      notes?: string | null;
+    }) => cobrarCompra(input.id, input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["compras", customerId] });
       qc.invalidateQueries({ queryKey: ["contact"] });
     },
   });
