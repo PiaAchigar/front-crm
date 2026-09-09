@@ -109,7 +109,9 @@ export function cotizarVenta(input: {
   });
 }
 
-export function venderCompra(input: Cotizacion & { customerId: string; notes?: string | null }) {
+export function venderCompra(
+  input: Cotizacion & { customerId: string; notes?: string | null; usarSaldo?: number },
+) {
   return apiFetch<Compra>("/api/crm/purchases", {
     method: "POST",
     body: JSON.stringify(input),

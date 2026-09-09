@@ -28,16 +28,33 @@ import { VenderModal } from "./VenderModal";
  * Por ahora muestra packs, combos y servicios vendidos por adelantado. El
  * timeline completo —compras sueltas, asistencia, reagendamientos— es V4.
  */
-export function ComprasCard({ customerId }: { customerId: string }) {
+export function ComprasCard({
+  customerId,
+  saldoAFavor = 0,
+}: {
+  customerId: string;
+  /** Saldo a favor de la clienta, de la ficha. */
+  saldoAFavor?: number;
+}) {
   const { data: compras, isLoading, isError } = useCompras(customerId);
   const [vendiendo, setVendiendo] = useState(false);
 
   return (
     <section className="rounded-xl border border-surface-high bg-surface-low p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-soft">
-          Compras del Cliente
-        </h2>
+        <div className="flex items-baseline gap-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-soft">
+            Compras del Cliente
+          </h2>
+          {/* Acá y no sólo en "Cuenta de cliente": es lo primero que hay que
+              ofrecerle antes de cobrarle, así que tiene que estar donde se
+              vende. */}
+          {saldoAFavor > 0 && (
+            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800">
+              {pesos(saldoAFavor)} a favor
+            </span>
+          )}
+        </div>
         <button
           className="rounded-full bg-primary px-4 py-1.5 text-sm text-white hover:bg-primary-dark"
           onClick={() => setVendiendo(true)}
@@ -63,7 +80,13 @@ export function ComprasCard({ customerId }: { customerId: string }) {
         </ul>
       )}
 
-      {vendiendo && <VenderModal customerId={customerId} onClose={() => setVendiendo(false)} />}
+      {vendiendo && (
+        <VenderModal
+          customerId={customerId}
+          saldoAFavor={saldoAFavor}
+          onClose={() => setVendiendo(false)}
+        />
+      )}
     </section>
   );
 }

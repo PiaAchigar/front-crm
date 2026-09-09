@@ -133,7 +133,9 @@ export function ContactDetailPage() {
 
       {/* Compras: packs, combos y servicios pagados por adelantado. Necesita la
           cuenta de cliente — sin ella no hay a quién asociarle la compra. */}
-      {customer && <ComprasCard customerId={customer.id} />}
+      {customer && (
+        <ComprasCard customerId={customer.id} saldoAFavor={Number(customer.creditBalance ?? 0)} />
+      )}
 
       {/* Deals */}
       <section className="rounded-xl border border-surface-high bg-surface-low p-4">

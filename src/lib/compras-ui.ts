@@ -93,3 +93,17 @@ export function ahorro(compra: Compra): number {
 export function puedeAgendar(compra: Compra): boolean {
   return !compra.cancelledAt && compra.disponibles > 0;
 }
+
+/**
+ * Cuánto saldo a favor entra en una compra. Espejo de `planDePagoConSaldo` del
+ * worker, sólo para MOSTRAR: el backend vuelve a hacer la cuenta y es el que
+ * manda. Acá sirve para que el número aparezca sin ir y volver al servidor en
+ * cada tecla.
+ *
+ * Los dos topes son los que importan: no más saldo del que hay, y no más que
+ * el precio — aplicar $200.000 a una compra de $166.000 dejaría un pago de más
+ * que después habría que devolver.
+ */
+export function saldoQueEntra(precio: number, saldoDisponible: number): number {
+  return Math.min(Math.max(0, saldoDisponible), Math.max(0, precio));
+}

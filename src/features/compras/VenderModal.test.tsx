@@ -74,16 +74,66 @@ async function elegirCuerpoFull() {
   await userEvent.click(await screen.findByRole("button", { name: /cuerpo full/i }));
 }
 
+describe("VenderModal — saldo a favor", () => {
+  it("sin saldo, no ofrece nada", async () => {
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await screen.findByRole("button", { name: /cuerpo full/i });
+    expect(screen.queryByLabelText(/saldo a favor/i)).not.toBeInTheDocument();
+  });
+
+  it("con saldo, lo ofrece y dice cuánto es", async () => {
+    render(<VenderModal customerId="cu1" saldoAFavor={110667} onClose={() => {}} />, { wrapper });
+    await elegirCuerpoFull();
+    expect(await screen.findByLabelText(/saldo a favor/i)).toBeInTheDocument();
+    expect(screen.getByText(/\$110\.667/)).toBeInTheDocument();
+  });
+
+  it("al usarlo, muestra cuánto queda por cobrar", async () => {
+    // El pack sale $166.000 y tiene $110.667: faltan $55.333.
+    render(<VenderModal customerId="cu1" saldoAFavor={110667} onClose={() => {}} />, { wrapper });
+    await elegirCuerpoFull();
+    await userEvent.click(await screen.findByLabelText(/saldo a favor/i));
+    expect(await screen.findByText("$55.333")).toBeInTheDocument();
+  });
+
+  it("si el saldo cubre todo, lo dice", async () => {
+    render(<VenderModal customerId="cu1" saldoAFavor={200000} onClose={() => {}} />, { wrapper });
+    await elegirCuerpoFull();
+    await userEvent.click(await screen.findByLabelText(/saldo a favor/i));
+    expect(await screen.findByText(/queda paga/i)).toBeInTheDocument();
+  });
+
+  it("nunca aplica más saldo que el precio de la compra", async () => {
+    // Aplicar $200.000 a una compra de $166.000 dejaría un pago de más que
+    // después habría que devolver.
+    render(<VenderModal customerId="cu1" saldoAFavor={200000} onClose={() => {}} />, { wrapper });
+    await elegirCuerpoFull();
+    await userEvent.click(await screen.findByLabelText(/saldo a favor/i));
+    await userEvent.click(screen.getByRole("button", { name: /^vender$/i }));
+    await waitFor(() => expect(cuerposDePost).toHaveLength(1));
+    expect(cuerposDePost[0]).toMatchObject({ usarSaldo: 166000 });
+  });
+
+  it("sin tildarlo, no manda saldo", async () => {
+    render(<VenderModal customerId="cu1" saldoAFavor={110667} onClose={() => {}} />, { wrapper });
+    await elegirCuerpoFull();
+    await screen.findByText("$195.000");
+    await userEvent.click(screen.getByRole("button", { name: /^vender$/i }));
+    await waitFor(() => expect(cuerposDePost).toHaveLength(1));
+    expect(cuerposDePost[0]).toMatchObject({ usarSaldo: 0 });
+  });
+});
+
 describe("VenderModal", () => {
   it("separa el catálogo en las tres cosas que se venden", async () => {
-    render(<VenderModal customerId="cu1" onClose={() => {}} />, { wrapper });
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
     expect(await screen.findByRole("tab", { name: /packs de depilación/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /combos/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /servicios/i })).toBeInTheDocument();
   });
 
   it("el buscador filtra por nombre", async () => {
-    render(<VenderModal customerId="cu1" onClose={() => {}} />, { wrapper });
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
     await screen.findByRole("button", { name: /cuerpo full/i });
     await userEvent.type(screen.getByPlaceholderText(/buscar/i), "nada de esto");
     await waitFor(() =>
@@ -94,13 +144,13 @@ describe("VenderModal", () => {
   it("al elegir un pack propone sus sesiones", async () => {
     // 3 es lo que dice la política del combo. Ofrecer otro número sería
     // ofrecer un precio sin descuento sin que se entienda por qué.
-    render(<VenderModal customerId="cu1" onClose={() => {}} />, { wrapper });
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
     await elegirCuerpoFull();
     expect(await screen.findByLabelText(/sesiones/i)).toHaveValue(3);
   });
 
   it("muestra las dos capas de descuento por separado", async () => {
-    render(<VenderModal customerId="cu1" onClose={() => {}} />, { wrapper });
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
     await elegirCuerpoFull();
     expect(await screen.findByText("$195.000")).toBeInTheDocument(); // precio de lista
     // Dos veces: en la fila "Con el pack" y otra vez en el total.
@@ -108,7 +158,7 @@ describe("VenderModal", () => {
   });
 
   it("avisa cuándo el pack deja de descontar", async () => {
-    render(<VenderModal customerId="cu1" onClose={() => {}} />, { wrapper });
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
     await elegirCuerpoFull();
     await screen.findByText("$195.000");
     const sesiones = screen.getByLabelText(/sesiones/i);
@@ -118,7 +168,7 @@ describe("VenderModal", () => {
   });
 
   it("la promo se aplica sobre el precio del pack", async () => {
-    render(<VenderModal customerId="cu1" onClose={() => {}} />, { wrapper });
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
     await elegirCuerpoFull();
     await screen.findByText("$195.000");
     await userEvent.selectOptions(screen.getByLabelText(/promo/i), "p1");
@@ -128,7 +178,7 @@ describe("VenderModal", () => {
 
   it("vende con los montos que se vieron en pantalla", async () => {
     // Lo que se congela es lo cotizado, no una cuenta que el navegador rehaga.
-    render(<VenderModal customerId="cu1" onClose={() => {}} />, { wrapper });
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
     await elegirCuerpoFull();
     await screen.findByText("$195.000");
     await userEvent.click(screen.getByRole("button", { name: /^vender$/i }));
@@ -145,14 +195,14 @@ describe("VenderModal", () => {
   });
 
   it("no se puede vender sin elegir qué", async () => {
-    render(<VenderModal customerId="cu1" onClose={() => {}} />, { wrapper });
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
     await screen.findByRole("button", { name: /cuerpo full/i });
     expect(screen.getByRole("button", { name: /^vender$/i })).toBeDisabled();
   });
 
   it("al vender se cierra", async () => {
     const onClose = vi.fn();
-    render(<VenderModal customerId="cu1" onClose={onClose} />, { wrapper });
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={onClose} />, { wrapper });
     await elegirCuerpoFull();
     await screen.findByText("$195.000");
     await userEvent.click(screen.getByRole("button", { name: /^vender$/i }));

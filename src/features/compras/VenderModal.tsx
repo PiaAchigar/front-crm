@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ItemDeCatalogo, OrigenVenta } from "../../api/compras";
-import { pesos } from "../../lib/compras-ui";
+import { pesos, saldoQueEntra } from "../../lib/compras-ui";
 import { useCatalogoVendible, useCotizacion, useVender } from "./useCompras";
 
 /**
@@ -22,9 +22,12 @@ type Catalogo3 = { depilacion: ItemDeCatalogo[]; combos: ItemDeCatalogo[]; servi
 
 export function VenderModal({
   customerId,
+  saldoAFavor,
   onClose,
 }: {
   customerId: string;
+  /** Saldo a favor de la clienta. Lo primero que se le ofrece antes de cobrar. */
+  saldoAFavor: number;
   onClose: () => void;
 }) {
   const { data: catalogo, isLoading } = useCatalogoVendible(true);
@@ -36,6 +39,7 @@ export function VenderModal({
   const [sesiones, setSesiones] = useState(1);
   const [promotionId, setPromotionId] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
+  const [usarSaldo, setUsarSaldo] = useState(false);
 
   const cotizacion = useCotizacion({
     origen: (elegido?.origen ?? null) as OrigenVenta | null,
@@ -71,9 +75,16 @@ export function VenderModal({
   const conDescuentoDePack = !!elegido?.packSesiones && sesiones === elegido.packSesiones;
   const sinDescuento = !!q && q.discountedAmount >= q.baseAmount;
 
+  const aplicable = q ? saldoQueEntra(q.finalAmount, saldoAFavor) : 0;
+  const conSaldo = usarSaldo ? aplicable : 0;
+  const restaPagar = q ? Math.max(0, q.finalAmount - conSaldo) : 0;
+
   function handleVender() {
     if (!q) return;
-    vender.mutate({ ...q, notes: notes.trim() || null }, { onSuccess: onClose });
+    vender.mutate(
+      { ...q, notes: notes.trim() || null, usarSaldo: conSaldo },
+      { onSuccess: onClose },
+    );
   }
 
   return (
@@ -229,6 +240,43 @@ export function VenderModal({
                         <p className="text-xs text-emerald-700">
                           Ahorra {pesos(q.baseAmount - q.finalAmount)}
                         </p>
+                      )}
+
+                      {/* El saldo a favor va DESPUÉS del total y no antes: no
+                          es un descuento, es plata de la clienta que ya está
+                          en la casa. Mezclarlo con las capas de precio haría
+                          creer que el pack salió más barato. */}
+                      {saldoAFavor > 0 && (
+                        <div className="mt-2 border-t border-surface-highest pt-2">
+                          <label className="flex items-start gap-2 text-xs">
+                            <input
+                              type="checkbox"
+                              className="mt-0.5"
+                              checked={usarSaldo}
+                              onChange={(e) => setUsarSaldo(e.target.checked)}
+                            />
+                            <span>
+                              Usar el <strong>saldo a favor</strong> de {pesos(saldoAFavor)}
+                            </span>
+                          </label>
+                          {usarSaldo && (
+                            <dl className="mt-1 flex flex-col gap-1">
+                              <div className="flex justify-between">
+                                <dt className="text-ink-soft">Con saldo a favor</dt>
+                                <dd>−{pesos(conSaldo)}</dd>
+                              </div>
+                              <div className="flex justify-between font-semibold text-ink">
+                                <dt>{restaPagar === 0 ? "Queda paga" : "Resta cobrar"}</dt>
+                                <dd>{pesos(restaPagar)}</dd>
+                              </div>
+                              {saldoAFavor > conSaldo && (
+                                <p className="text-xs text-ink-soft">
+                                  Le quedan {pesos(saldoAFavor - conSaldo)} a favor.
+                                </p>
+                              )}
+                            </dl>
+                          )}
+                        </div>
                       )}
                     </dl>
                   )}

@@ -59,7 +59,7 @@ export function useCotizacion(input: {
 export function useVender(customerId: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: Cotizacion & { notes?: string | null }) =>
+    mutationFn: (input: Cotizacion & { notes?: string | null; usarSaldo?: number }) =>
       venderCompra({ ...input, customerId: customerId! }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["compras", customerId] });
