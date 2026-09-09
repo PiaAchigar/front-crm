@@ -24,6 +24,8 @@ const pack: Compra = {
   cancelledAt: null,
   notes: null,
   consumidas: 1,
+  perdidas: 0,
+  usadas: 1,
   agendadas: 1,
   disponibles: 1,
   vencidas: 0,
@@ -173,6 +175,27 @@ describe("ComprasCard", () => {
     compras = [{ ...pack, cancelledAt: "2026-09-09T10:00:00.000Z" }];
     render(<ComprasCard customerId="cu1" />, { wrapper });
     expect(await screen.findByRole("button", { name: /^eliminar$/i })).toBeInTheDocument();
+  });
+
+  it("una sesión perdida se ve, y en rojo", async () => {
+    // La clienta no vino: perdió esa sesión y su plata. Es lo primero que va a
+    // preguntar, así que no puede estar escondido.
+    compras = [
+      {
+        ...pack,
+        consumidas: 0,
+        perdidas: 1,
+        usadas: 1,
+        agendadas: 0,
+        disponibles: 2,
+        sessions: [
+          { id: "s1", sessionNumber: 1, appointmentId: "a1", appointmentStart: "2026-09-01T13:00:00.000Z", consumedAt: null, estado: "perdida" },
+        ],
+      },
+    ];
+    render(<ComprasCard customerId="cu1" />, { wrapper });
+    expect(await screen.findByText(/1 perdida por no venir/i)).toBeInTheDocument();
+    expect(screen.getByText("1 de 3 usadas")).toBeInTheDocument();
   });
 
   it("el botón de vender abre la pantalla de venta", async () => {
