@@ -3,7 +3,7 @@ import { apiFetch } from "./client";
 /** Los cuatro estados de una sesión. Se DERIVAN en el backend a partir del
  *  turno y de la vigencia de la compra: no hay ninguna columna que los guarde,
  *  así que no pueden quedar desincronizados. */
-export type EstadoSesion = "consumida" | "agendada" | "vencida" | "disponible";
+export type EstadoSesion = "consumida" | "perdida" | "agendada" | "vencida" | "disponible";
 
 export type SesionDeCompra = {
   id: string;
@@ -34,6 +34,10 @@ export type Compra = {
   notes: string | null;
   // Derivados, calculados por el backend en cada lectura.
   consumidas: number;
+  /** Sesiones que la clienta perdió por no venir. Ya se cobraron. */
+  perdidas: number;
+  /** Consumidas + perdidas. */
+  usadas: number;
   agendadas: number;
   disponibles: number;
   vencidas: number;

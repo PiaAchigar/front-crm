@@ -103,6 +103,12 @@ function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: stri
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-soft">
         <span>{progreso.texto}</span>
         {compra.agendadas > 0 && <span>{compra.agendadas} agendada{compra.agendadas > 1 ? "s" : ""}</span>}
+        {/* En rojo: no es un dato neutro, es plata que la clienta perdió. */}
+        {compra.perdidas > 0 && (
+          <span className="text-rose-700">
+            {compra.perdidas} perdida{compra.perdidas > 1 ? "s" : ""} por no venir
+          </span>
+        )}
         {compra.disponibles > 0 && <span>{compra.disponibles} sin usar</span>}
         <span>
           Pagado {pesos(compra.pagado)} de {pesos(compra.finalAmount)}

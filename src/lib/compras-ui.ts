@@ -46,20 +46,28 @@ export function estadoDeCompra(compra: Compra): Etiqueta {
 /**
  * Cuántas sesiones se usaron de verdad.
  *
- * **Agendada no cuenta como usada**: el turno puede cancelarse y la sesión
- * vuelve sola a disponible. Contarla acá haría que la barra retroceda, que es
- * exactamente la señal de que se estaba midiendo la cosa equivocada.
+ * **Usadas = consumidas + perdidas.** Una clienta que no vino perdió esa
+ * sesión y no la puede reagendar (regla de Laura, 2026-09-09), así que para
+ * ella está tan usada como si se la hubiera hecho.
+ *
+ * **Agendada NO cuenta**: el turno puede cancelarse y la sesión vuelve sola a
+ * disponible. Contarla acá haría que la barra retroceda, que es exactamente la
+ * señal de que se estaba midiendo la cosa equivocada.
  */
 export function progresoDeSesiones(compra: Compra): { texto: string; porcentaje: number } {
   const total = compra.sessionsTotal ?? 0;
+  const usadas = compra.usadas ?? compra.consumidas;
   return {
-    texto: `${compra.consumidas} de ${total} usadas`,
-    porcentaje: total === 0 ? 0 : Math.round((compra.consumidas / total) * 100),
+    texto: `${usadas} de ${total} usadas`,
+    porcentaje: total === 0 ? 0 : Math.round((usadas / total) * 100),
   };
 }
 
 const SESIONES: Record<EstadoSesion, Etiqueta> = {
   consumida: { texto: "Consumida", clase: "bg-emerald-100 text-emerald-800" },
+  // Rojo y no gris: no es un estado neutro, es plata que la clienta perdió y
+  // por la que va a preguntar.
+  perdida: { texto: "Perdida (no vino)", clase: "bg-rose-100 text-rose-800" },
   agendada: { texto: "Agendada", clase: "bg-sky-100 text-sky-800" },
   disponible: { texto: "Disponible", clase: "bg-surface-high text-ink-soft" },
   vencida: { texto: "Vencida", clase: "bg-amber-100 text-amber-800" },
