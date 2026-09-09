@@ -143,3 +143,27 @@ export function fetchImpactoDeBorrado(id: string): Promise<ImpactoDeBorrado> {
 export function eliminarCompra(id: string) {
   return apiFetch<void>(`/api/crm/purchases/${id}`, { method: "DELETE" });
 }
+
+/** Si a una compra se le puede devolver la plata, cuánta, y si no por qué. */
+export type ChequeoDeDevolucion = {
+  cancelada: boolean;
+  pagado: number;
+  finalAmount: number;
+  usadas: number;
+  saldoDisponible: number;
+  yaDevuelta: boolean;
+  motivos: string[];
+  sePuede: boolean;
+  monto: number;
+};
+
+export function fetchChequeoDeDevolucion(id: string): Promise<ChequeoDeDevolucion> {
+  return apiFetch(`/api/crm/purchases/${id}/refund-check`);
+}
+
+export function devolverPlata(id: string, notes?: string | null) {
+  return apiFetch<{ monto: number }>(`/api/crm/purchases/${id}/refund`, {
+    method: "POST",
+    body: JSON.stringify({ notes: notes ?? null }),
+  });
+}

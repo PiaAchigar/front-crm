@@ -11,7 +11,9 @@ import {
 } from "../../lib/compras-ui";
 import {
   useCancelarCompra,
+  useChequeoDeDevolucion,
   useCompras,
+  useDevolverPlata,
   useEliminarCompra,
   useImpactoDeBorrado,
 } from "./useCompras";
@@ -95,6 +97,7 @@ function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: stri
   const [abierta, setAbierta] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
   const [borrando, setBorrando] = useState(false);
+  const [devolviendo, setDevolviendo] = useState(false);
   const cancelar = useCancelarCompra(customerId);
 
   const estado = estadoDeCompra(compra);
@@ -154,6 +157,14 @@ function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: stri
             Cancelar compra
           </button>
         )}
+        {/* Devolver plata sólo tiene sentido sobre algo ya cancelado: si la
+            clienta todavía tiene el pack, devolverle la plata sería
+            regalárselo. El resto de las condiciones las evalúa el cartel. */}
+        {cancelada && (
+          <button className="text-ink-soft hover:underline" onClick={() => setDevolviendo(true)}>
+            Devolver plata
+          </button>
+        )}
         {/* Eliminar también se ofrece sobre una compra cancelada: cancelar por
             error y querer limpiarlo es el mismo caso — no pasó nada. */}
         <button className="text-ink-soft hover:underline" onClick={() => setBorrando(true)}>
@@ -187,6 +198,14 @@ function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: stri
             })}
           </tbody>
         </table>
+      )}
+
+      {devolviendo && (
+        <DevolverPlataDialog
+          compra={compra}
+          customerId={customerId}
+          onClose={() => setDevolviendo(false)}
+        />
       )}
 
       {borrando && (
@@ -293,6 +312,76 @@ function EliminarCompraDialog({
       isPending={eliminar.isPending}
       error={eliminar.error ? (eliminar.error as Error).message : null}
       onConfirm={() => eliminar.mutate(compra.id, { onSuccess: onClose })}
+      onClose={onClose}
+    />
+  );
+}
+
+/**
+ * El cartel de devolver plata en mano.
+ *
+ * Es el ÚNICO lugar de todo el flujo donde sale plata del local, así que antes
+ * de ofrecer nada le pregunta al backend si se puede y por cuánto. Si no se
+ * puede, explica el motivo y NO muestra el botón: la seña, por ejemplo, queda
+ * a favor pero no se devuelve en efectivo.
+ */
+function DevolverPlataDialog({
+  compra,
+  customerId,
+  onClose,
+}: {
+  compra: Compra;
+  customerId: string;
+  onClose: () => void;
+}) {
+  const { data: chequeo, isLoading } = useChequeoDeDevolucion(compra.id);
+  const devolver = useDevolverPlata(customerId);
+  const nombre = compra.description ?? "esta compra";
+
+  if (isLoading || !chequeo) {
+    return (
+      <ConfirmDialog
+        title="Revisando la devolución…"
+        description="Estamos viendo cuánto se le puede devolver."
+        confirmLabel="Esperá"
+        isPending
+        onConfirm={() => {}}
+        onClose={onClose}
+      />
+    );
+  }
+
+  if (!chequeo.sePuede) {
+    return (
+      <ConfirmDialog
+        title={`No se puede devolver la plata de "${nombre}"`}
+        points={chequeo.motivos}
+        confirmLabel="Entendido"
+        cancelLabel="Cerrar"
+        onConfirm={onClose}
+        onClose={onClose}
+      />
+    );
+  }
+
+  return (
+    <ConfirmDialog
+      title={`¿Devolverle ${pesos(chequeo.monto)} a la clienta?`}
+      description="Es plata que sale del local. Antes de esto, fijate si quiere usar el saldo a favor en otro tratamiento."
+      points={[
+        `Sale de la caja del día como un egreso, con el detalle de "${nombre}".`,
+        `Le baja el saldo a favor de ${pesos(chequeo.saldoDisponible)} a ${pesos(chequeo.saldoDisponible - chequeo.monto)}.`,
+        chequeo.usadas > 0
+          ? `Ya descontamos ${chequeo.usadas} sesión(es) que usó: esas se cobraron.`
+          : "No usó ninguna sesión, así que vuelve todo lo que pagó.",
+      ]}
+      confirmLabel={`Devolver ${pesos(chequeo.monto)}`}
+      pendingLabel="Devolviendo…"
+      cancelLabel="Volver"
+      tone="danger"
+      isPending={devolver.isPending}
+      error={devolver.error ? (devolver.error as Error).message : null}
+      onConfirm={() => devolver.mutate({ id: compra.id }, { onSuccess: onClose })}
       onClose={onClose}
     />
   );

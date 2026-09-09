@@ -4,8 +4,10 @@ import {
   type OrigenVenta,
   cancelarCompra,
   cotizarVenta,
+  devolverPlata,
   eliminarCompra,
   fetchCatalogoVendible,
+  fetchChequeoDeDevolucion,
   fetchCompras,
   fetchImpactoDeBorrado,
   venderCompra,
@@ -96,5 +98,29 @@ export function useEliminarCompra(customerId: string | null) {
   return useMutation({
     mutationFn: (id: string) => eliminarCompra(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["compras", customerId] }),
+  });
+}
+
+/** Se consulta al abrir el cartel. El backend lo rehace al devolver: entre el
+ *  preview y la confirmación la clienta pudo haber usado el saldo en otra
+ *  compra. */
+export function useChequeoDeDevolucion(id: string | null) {
+  return useQuery({
+    queryKey: ["compra-refund-check", id],
+    queryFn: () => fetchChequeoDeDevolucion(id!),
+    enabled: !!id,
+    staleTime: 0,
+  });
+}
+
+export function useDevolverPlata(customerId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, notes }: { id: string; notes?: string | null }) => devolverPlata(id, notes),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["compras", customerId] });
+      // El saldo a favor vive en la ficha, y acaba de bajar.
+      qc.invalidateQueries({ queryKey: ["contact"] });
+    },
   });
 }

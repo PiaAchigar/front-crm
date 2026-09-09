@@ -50,6 +50,18 @@ let impacto = {
   borrable: true,
 };
 let borrados: string[] = [];
+let devoluciones: string[] = [];
+let chequeo = {
+  cancelada: true,
+  pagado: 166000,
+  finalAmount: 166000,
+  usadas: 1,
+  saldoDisponible: 110667,
+  yaDevuelta: false,
+  motivos: [] as string[],
+  sePuede: true,
+  monto: 110667,
+};
 
 function wrapper({ children }: { children: ReactNode }) {
   const qc = new QueryClient({
@@ -61,6 +73,18 @@ function wrapper({ children }: { children: ReactNode }) {
 beforeEach(() => {
   compras = [pack];
   borrados = [];
+  devoluciones = [];
+  chequeo = {
+    cancelada: true,
+    pagado: 166000,
+    finalAmount: 166000,
+    usadas: 1,
+    saldoDisponible: 110667,
+    yaDevuelta: false,
+    motivos: [],
+    sePuede: true,
+    monto: 110667,
+  };
   impacto = {
     pagos: 0,
     montoPagado: 0,
@@ -79,6 +103,13 @@ beforeEach(() => {
       }
       if (u.includes("/delete-impact")) {
         return { ok: true, status: 200, json: async () => impacto };
+      }
+      if (u.includes("/refund-check")) {
+        return { ok: true, status: 200, json: async () => chequeo };
+      }
+      if (u.endsWith("/refund")) {
+        devoluciones.push(u);
+        return { ok: true, status: 200, json: async () => ({ monto: chequeo.monto }) };
       }
       if (init?.method === "DELETE") {
         borrados.push(u);
@@ -196,6 +227,63 @@ describe("ComprasCard", () => {
     render(<ComprasCard customerId="cu1" />, { wrapper });
     expect(await screen.findByText(/1 perdida por no venir/i)).toBeInTheDocument();
     expect(screen.getByText("1 de 3 usadas")).toBeInTheDocument();
+  });
+
+  it("una compra activa no ofrece devolver la plata", async () => {
+    // Primero hay que cancelarla: devolver algo que la clienta todavía tiene
+    // sería dejarle el pack gratis.
+    render(<ComprasCard customerId="cu1" />, { wrapper });
+    await screen.findByText("Cuerpo Full — pack de 3");
+    expect(screen.queryByRole("button", { name: /devolver plata/i })).not.toBeInTheDocument();
+  });
+
+  it("una compra cancelada sí lo ofrece", async () => {
+    compras = [{ ...pack, cancelledAt: "2026-09-09T10:00:00.000Z" }];
+    render(<ComprasCard customerId="cu1" />, { wrapper });
+    expect(await screen.findByRole("button", { name: /devolver plata/i })).toBeInTheDocument();
+  });
+
+  it("el cartel dice cuánto sale de la caja", async () => {
+    compras = [{ ...pack, cancelledAt: "2026-09-09T10:00:00.000Z" }];
+    render(<ComprasCard customerId="cu1" />, { wrapper });
+    await userEvent.click(await screen.findByRole("button", { name: /devolver plata/i }));
+    // En el título y en el botón de confirmar: el monto tiene que estar en el
+    // lugar donde se decide, no sólo en el encabezado.
+    expect(await screen.findAllByText(/\$110\.667/)).not.toHaveLength(0);
+    expect(screen.getByRole("button", { name: /devolver \$110\.667/i })).toBeInTheDocument();
+    expect(screen.getByText(/caja del día/i)).toBeInTheDocument();
+  });
+
+  it("devuelve al confirmar", async () => {
+    compras = [{ ...pack, cancelledAt: "2026-09-09T10:00:00.000Z" }];
+    render(<ComprasCard customerId="cu1" />, { wrapper });
+    await userEvent.click(await screen.findByRole("button", { name: /devolver plata/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /devolver .*110\.667/i }));
+    await waitFor(() => expect(devoluciones).toHaveLength(1));
+  });
+
+  it("si era una seña, explica que no se devuelve en efectivo", async () => {
+    chequeo = {
+      ...chequeo,
+      pagado: 66400,
+      sePuede: false,
+      monto: 0,
+      motivos: ["no está paga al 100% (se pagaron $66.400 de $166.000) — esa plata queda a favor, pero no se devuelve en efectivo"],
+    };
+    compras = [{ ...pack, cancelledAt: "2026-09-09T10:00:00.000Z" }];
+    render(<ComprasCard customerId="cu1" />, { wrapper });
+    await userEvent.click(await screen.findByRole("button", { name: /devolver plata/i }));
+    expect(await screen.findByText(/no se devuelve en efectivo/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^devolver \$/i })).not.toBeInTheDocument();
+  });
+
+  it("no devuelve nada si está bloqueada", async () => {
+    chequeo = { ...chequeo, sePuede: false, monto: 0, motivos: ["ya se le devolvió la plata de esta compra"] };
+    compras = [{ ...pack, cancelledAt: "2026-09-09T10:00:00.000Z" }];
+    render(<ComprasCard customerId="cu1" />, { wrapper });
+    await userEvent.click(await screen.findByRole("button", { name: /devolver plata/i }));
+    await screen.findByText(/ya se le devolvió/i);
+    expect(devoluciones).toHaveLength(0);
   });
 
   it("el botón de vender abre la pantalla de venta", async () => {
