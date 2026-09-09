@@ -33,6 +33,9 @@ export type Compra = {
   cancelledAt: string | null;
   notes: string | null;
   // Derivados, calculados por el backend en cada lectura.
+  /** Si ya se le devolvió la plata de esta compra, y cuánta. */
+  devuelta: boolean;
+  devuelto: number;
   consumidas: number;
   /** Sesiones que la clienta perdió por no venir. Ya se cobraron. */
   perdidas: number;
@@ -132,6 +135,7 @@ export type ImpactoDeBorrado = {
   facturas: number;
   sesionesAgendadas: number;
   sesionesConsumidas: number;
+  movimientosDeSaldo: number;
   motivos: string[];
   borrable: boolean;
 };

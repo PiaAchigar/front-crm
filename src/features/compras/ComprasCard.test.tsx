@@ -23,6 +23,8 @@ const pack: Compra = {
   expiresAt: null,
   cancelledAt: null,
   notes: null,
+  devuelta: false,
+  devuelto: 0,
   consumidas: 1,
   perdidas: 0,
   usadas: 1,
@@ -46,6 +48,7 @@ let impacto = {
   facturas: 0,
   sesionesAgendadas: 0,
   sesionesConsumidas: 0,
+  movimientosDeSaldo: 0,
   motivos: [] as string[],
   borrable: true,
 };
@@ -91,6 +94,7 @@ beforeEach(() => {
     facturas: 0,
     sesionesAgendadas: 0,
     sesionesConsumidas: 0,
+    movimientosDeSaldo: 0,
     motivos: [],
     borrable: true,
   };
@@ -201,11 +205,22 @@ describe("ComprasCard", () => {
     expect(borrados).toHaveLength(0);
   });
 
-  it("una compra cancelada igual se puede eliminar si no cuelga nada", async () => {
-    // Cancelar por error y querer limpiarlo es el mismo caso: no pasó nada.
+  it("una compra cancelada ya no se puede eliminar", async () => {
+    // Eliminar es sólo para una venta cargada por error. Una vez cancelada ya
+    // es historia, y casi siempre movió el saldo a favor.
     compras = [{ ...pack, cancelledAt: "2026-09-09T10:00:00.000Z" }];
     render(<ComprasCard customerId="cu1" />, { wrapper });
-    expect(await screen.findByRole("button", { name: /^eliminar$/i })).toBeInTheDocument();
+    await screen.findByText("Cancelada");
+    expect(screen.queryByRole("button", { name: /^eliminar$/i })).not.toBeInTheDocument();
+  });
+
+  it("una compra ya devuelta lo muestra y no ofrece devolver de nuevo", async () => {
+    compras = [
+      { ...pack, cancelledAt: "2026-09-09T10:00:00.000Z", devuelta: true, devuelto: 110667 },
+    ];
+    render(<ComprasCard customerId="cu1" />, { wrapper });
+    expect(await screen.findByText(/devolución realizada/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /devolver plata/i })).not.toBeInTheDocument();
   });
 
   it("una sesión perdida se ve, y en rojo", async () => {

@@ -26,6 +26,8 @@ const base: Compra = {
   expiresAt: null,
   cancelledAt: null,
   notes: null,
+  devuelta: false,
+  devuelto: 0,
   consumidas: 0,
   perdidas: 0,
   usadas: 0,

@@ -106,9 +106,13 @@ function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: stri
   const cancelada = !!compra.cancelledAt;
 
   return (
-    <li
-      className={`rounded-lg border border-surface-high p-3 ${cancelada ? "opacity-60" : ""}`}
-    >
+    <li className="rounded-lg border border-surface-high p-3">
+      {/* ⚠️ El apagado va en ESTE div y no en el <li>.
+          Los diálogos se renderizan más abajo, dentro del mismo <li>: con la
+          opacidad puesta arriba la heredaban y salían translúcidos, con el
+          texto de la card asomando por detrás. `opacity` crea un contexto de
+          apilado que un `position: fixed` hijo no puede escapar. */}
+      <div className={cancelada ? "opacity-60" : ""}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <p className={`font-medium text-ink ${cancelada ? "line-through" : ""}`}>
@@ -122,6 +126,11 @@ function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: stri
         </div>
         <div className="flex items-center gap-2">
           <span className={`rounded-full px-2 py-0.5 text-xs ${estado.clase}`}>{estado.texto}</span>
+          {compra.devuelta && (
+            <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs text-orange-800">
+              Devolución realizada
+            </span>
+          )}
           <span className="text-sm font-semibold text-ink">{pesos(compra.finalAmount)}</span>
         </div>
       </div>
@@ -157,19 +166,22 @@ function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: stri
             Cancelar compra
           </button>
         )}
-        {/* Devolver plata sólo tiene sentido sobre algo ya cancelado: si la
-            clienta todavía tiene el pack, devolverle la plata sería
-            regalárselo. El resto de las condiciones las evalúa el cartel. */}
-        {cancelada && (
+        {/* Devolver plata sólo tiene sentido sobre algo ya cancelado —si la
+            clienta todavía tiene el pack, devolvérsela sería regalárselo— y
+            una sola vez. El resto de las condiciones las evalúa el cartel. */}
+        {cancelada && !compra.devuelta && (
           <button className="text-ink-soft hover:underline" onClick={() => setDevolviendo(true)}>
             Devolver plata
           </button>
         )}
-        {/* Eliminar también se ofrece sobre una compra cancelada: cancelar por
-            error y querer limpiarlo es el mismo caso — no pasó nada. */}
-        <button className="text-ink-soft hover:underline" onClick={() => setBorrando(true)}>
-          Eliminar
-        </button>
+        {/* Eliminar es SÓLO para una venta cargada por error. Una vez
+            cancelada ya es historia —y casi siempre movió el saldo a favor,
+            que el borrado no puede dejar huérfano. */}
+        {!cancelada && (
+          <button className="text-ink-soft hover:underline" onClick={() => setBorrando(true)}>
+            Eliminar
+          </button>
+        )}
       </div>
 
       {abierta && (
@@ -199,6 +211,8 @@ function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: stri
           </tbody>
         </table>
       )}
+
+      </div>
 
       {devolviendo && (
         <DevolverPlataDialog
