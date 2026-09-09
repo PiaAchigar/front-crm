@@ -171,3 +171,29 @@ export function devolverPlata(id: string, notes?: string | null) {
     body: JSON.stringify({ notes: notes ?? null }),
   });
 }
+
+/** Un saldo a favor que se venció, con el detalle de dónde salió. */
+export type SaldoVencido = {
+  customerId: string;
+  contactId: string | null;
+  nombre: string | null;
+  vencido: number;
+  vigente: number;
+  origenes: {
+    monto: number;
+    acreditadoEl: string;
+    venceEl: string | null;
+    detalle: string | null;
+  }[];
+};
+
+export function fetchSaldosVencidos(): Promise<{ clientes: SaldoVencido[]; total: number }> {
+  return apiFetch("/api/crm/credits/expired");
+}
+
+export function vencerSaldo(customerId: string) {
+  return apiFetch<{ monto: number; detalle: string }>(
+    `/api/crm/credits/${customerId}/expire`,
+    { method: "POST" },
+  );
+}

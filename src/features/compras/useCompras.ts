@@ -10,7 +10,9 @@ import {
   fetchChequeoDeDevolucion,
   fetchCompras,
   fetchImpactoDeBorrado,
+  fetchSaldosVencidos,
   venderCompra,
+  vencerSaldo,
 } from "../../api/compras";
 
 export function useCompras(customerId: string | null) {
@@ -120,6 +122,22 @@ export function useDevolverPlata(customerId: string | null) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["compras", customerId] });
       // El saldo a favor vive en la ficha, y acaba de bajar.
+      qc.invalidateQueries({ queryKey: ["contact"] });
+    },
+  });
+}
+
+export function useSaldosVencidos() {
+  return useQuery({ queryKey: ["saldos-vencidos"], queryFn: fetchSaldosVencidos });
+}
+
+export function useVencerSaldo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (customerId: string) => vencerSaldo(customerId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["saldos-vencidos"] });
+      // El saldo de la ficha acaba de cambiar.
       qc.invalidateQueries({ queryKey: ["contact"] });
     },
   });

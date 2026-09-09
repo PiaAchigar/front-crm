@@ -9,6 +9,7 @@ import {
   useUnarchiveContact,
   useUpdateContact,
 } from "./useContacts";
+import { SaldosVencidosAviso } from "../compras/SaldosVencidosAviso";
 import { NewClientModal } from "./NewClientModal";
 import { ContactFormModal } from "./ContactFormModal";
 import { DeleteClientDialog } from "./DeleteClientDialog";
@@ -57,6 +58,9 @@ export function ContactsPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Sólo aparece si hay algo vencido: no ocupa lugar el resto del tiempo. */}
+      <SaldosVencidosAviso />
+
       <div className="flex items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <input

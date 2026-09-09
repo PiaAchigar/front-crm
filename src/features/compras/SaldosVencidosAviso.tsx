@@ -1,0 +1,98 @@
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { formatDateTimeToDate } from "../../lib/format";
+import { pesos } from "../../lib/compras-ui";
+import { useSaldosVencidos, useVencerSaldo } from "./useCompras";
+
+/**
+ * Aviso de saldos a favor vencidos.
+ *
+ * **No se muestra si no hay nada.** Un aviso permanente que casi siempre dice
+ * "no hay saldos vencidos" se vuelve invisible justo el día que tiene algo que
+ * decir.
+ *
+ * El pase a caja **se confirma, no pasa solo** (decisión de Pia, 2026-09-09):
+ * es plata que cambia de dueño, y si la clienta aparece al otro día
+ * reclamando, con el automático Laura se entera cuando ya está hecho.
+ */
+export function SaldosVencidosAviso() {
+  const { data } = useSaldosVencidos();
+  const [confirmando, setConfirmando] = useState<string | null>(null);
+  const vencer = useVencerSaldo();
+
+  if (!data?.clientes.length) return null;
+
+  const elegido = data.clientes.find((c) => c.customerId === confirmando);
+
+  return (
+    <section className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-sm font-semibold text-amber-900">
+          Saldo a favor vencido
+          {data.clientes.length > 1 ? ` — ${data.clientes.length} clientes` : ""}
+        </h2>
+        <span className="text-sm font-semibold text-amber-900">{pesos(data.total)}</span>
+      </div>
+      <p className="mt-0.5 text-xs text-amber-800">
+        Pasaron los 3 meses y no lo usaron. Al pasarlo a caja deja de estar disponible para la
+        clienta.
+      </p>
+
+      <ul className="mt-3 flex flex-col gap-2">
+        {data.clientes.map((c) => (
+          <li
+            key={c.customerId}
+            className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-low p-3"
+          >
+            <div className="min-w-0">
+              <Link to={`/contactos/${c.contactId}`} className="font-medium text-primary hover:underline">
+                {c.nombre ?? "Sin nombre"}
+              </Link>
+              {/* De dónde salió cada peso. Meses después, "saldo vencido de
+                  Mariana" sin el origen no le dice nada a nadie. */}
+              <ul className="mt-0.5 text-xs text-ink-soft">
+                {c.origenes.map((o, i) => (
+                  <li key={i}>
+                    {pesos(o.monto)} — {o.detalle ?? "saldo a favor"}
+                    {o.venceEl ? ` · venció el ${formatDateTimeToDate(o.venceEl)}` : ""}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-semibold text-ink">{pesos(c.vencido)}</span>
+              <button
+                className="rounded-full border border-amber-300 px-3 py-1 text-xs text-amber-900 hover:bg-amber-100"
+                onClick={() => setConfirmando(c.customerId)}
+              >
+                Pasar a caja
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      {elegido && (
+        <ConfirmDialog
+          title={`¿Pasar ${pesos(elegido.vencido)} a la caja?`}
+          description={`Es el saldo vencido de ${elegido.nombre ?? "esta clienta"}.`}
+          points={[
+            "Entra a la caja del día con el detalle de dónde vino.",
+            "La clienta deja de tener esa plata a favor.",
+            "Si querés dárselo igual, cerrá esto: mientras no lo pases, lo podés seguir usando en una venta.",
+          ]}
+          confirmLabel="Pasarlo a caja"
+          pendingLabel="Pasando…"
+          cancelLabel="Volver"
+          isPending={vencer.isPending}
+          error={vencer.error ? (vencer.error as Error).message : null}
+          onConfirm={() =>
+            vencer.mutate(elegido.customerId, { onSuccess: () => setConfirmando(null) })
+          }
+          onClose={() => setConfirmando(null)}
+        />
+      )}
+    </section>
+  );
+}
