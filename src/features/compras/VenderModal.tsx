@@ -17,9 +17,15 @@ const SOLAPAS: { clave: keyof Catalogo3; titulo: string }[] = [
   { clave: "depilacion", titulo: "Packs de depilación" },
   { clave: "combos", titulo: "Combos" },
   { clave: "servicios", titulo: "Servicios" },
+  { clave: "capacitaciones", titulo: "Capacitaciones" },
 ];
 
-type Catalogo3 = { depilacion: ItemDeCatalogo[]; combos: ItemDeCatalogo[]; servicios: ItemDeCatalogo[] };
+type Catalogo3 = {
+  depilacion: ItemDeCatalogo[];
+  combos: ItemDeCatalogo[];
+  servicios: ItemDeCatalogo[];
+  capacitaciones: ItemDeCatalogo[];
+};
 
 export function VenderModal({
   customerId,
@@ -79,10 +85,16 @@ export function VenderModal({
   }
 
   const q = cotizacion.data;
-  // El pack descuenta sólo con sus sesiones. Cuando no, hay que decirlo: si no
-  // el precio "sube" al tocar el número y parece un error del sistema.
   const conDescuentoDePack = !!elegido?.packSesiones && sesiones === elegido.packSesiones;
   const sinDescuento = !!q && q.discountedAmount >= q.baseAmount;
+
+  // El aviso de "sin descuento" SÓLO cuando de verdad se está perdiendo algo.
+  //
+  // Antes salía siempre que las sesiones no fueran las del pack, y eso incluía
+  // el caso más común de todos: vender UN servicio suelto. Decirle a Laura
+  // "sin el descuento del pack" cada vez que vende un lifting de pestañas es
+  // ruido sobre la operación normal.
+  const avisaFaltaDePack = !!elegido?.packSesiones && sesiones > 1 && !conDescuentoDePack;
 
   const aplicable = q ? saldoQueEntra(q.finalAmount, saldoAFavor) : 0;
   const conSaldo = usarSaldo ? aplicable : 0;
@@ -141,7 +153,10 @@ export function VenderModal({
           </p>
         </div>
 
-        <div className="grid flex-1 grid-cols-1 gap-0 overflow-hidden md:grid-cols-[1fr_20rem]">
+        {/* Alto FIJO y no `flex-1`: con el alto adaptado al contenido, el modal
+            pegaba un salto al cambiar de solapa —3 packs contra 120
+            servicios— y los botones se movían de lugar debajo del cursor. */}
+        <div className="grid h-[28rem] grid-cols-1 gap-0 overflow-hidden md:grid-cols-[1fr_20rem]">
           {/* Elegir qué */}
           <div className="flex min-h-0 flex-col border-r border-surface-high p-4">
             <div role="tablist" className="mb-3 flex gap-1">
@@ -173,7 +188,13 @@ export function VenderModal({
               {isLoading ? (
                 <p className="text-sm text-ink-soft">Cargando el catálogo…</p>
               ) : lista.length === 0 ? (
-                <p className="text-sm text-ink-soft">Nada que coincida.</p>
+                // Se distingue "no hay ninguno cargado" de "el buscador no
+                // encontró": son dos problemas con soluciones distintas.
+                <p className="text-sm text-ink-soft">
+                  {busqueda.trim()
+                    ? "Nada que coincida con la búsqueda."
+                    : "Todavía no hay ninguno cargado en el catálogo."}
+                </p>
               ) : (
                 <ul className="flex flex-col gap-1">
                   {lista.map((item) => (
@@ -213,33 +234,49 @@ export function VenderModal({
                     min={1}
                     className="mt-1 w-full rounded border border-surface-highest bg-surface-low px-3 py-2 text-sm"
                     value={sesiones}
-                    disabled={elegido.origen === "combo"}
+                    // Un combo YA es el paquete, y una capacitación se vende
+                    // entera: el precio de catálogo es el del curso completo.
+                    disabled={elegido.origen === "combo" || elegido.origen === "capacitacion"}
                     onChange={(e) => setSesiones(Math.max(1, Number(e.target.value) || 1))}
                   />
                 </label>
 
-                {elegido.packSesiones != null && !conDescuentoDePack && (
+                {conDescuentoDePack && (
+                  <p className="rounded bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                    Pack de {elegido.packSesiones}
+                    {elegido.packDescuentoPct ? ` — ${elegido.packDescuentoPct}% de descuento` : ""}.
+                  </p>
+                )}
+                {avisaFaltaDePack && (
                   <p className="rounded bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                    Sin el descuento del pack: son {elegido.packSesiones} sesiones. Con otro número
-                    se venden al precio de lista.
+                    El pack es de {elegido.packSesiones} sesiones. Con {sesiones} se venden al
+                    precio de lista, sin descuento.
                   </p>
                 )}
 
-                <label className="block text-sm">
-                  <span className="text-ink-soft">Promo</span>
-                  <select
-                    className="mt-1 w-full rounded border border-surface-highest bg-surface-low px-3 py-2 text-sm"
-                    value={promotionId ?? ""}
-                    onChange={(e) => setPromotionId(e.target.value || null)}
-                  >
-                    <option value="">Sin promo</option>
-                    {catalogo?.promociones.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name ?? "Sin nombre"}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                {/* Sólo si hay promos vigentes. Un desplegable con una única
+                    opción que dice "Sin promo" no informa nada y hace dudar de
+                    para qué está. */}
+                {!!catalogo?.promociones.length && (
+                  <label className="block text-sm">
+                    <span className="text-ink-soft">Promo</span>
+                    <select
+                      className="mt-1 w-full rounded border border-surface-highest bg-surface-low px-3 py-2 text-sm"
+                      value={promotionId ?? ""}
+                      onChange={(e) => setPromotionId(e.target.value || null)}
+                    >
+                      <option value="">Sin promo</option>
+                      {catalogo.promociones.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name ?? "Sin nombre"}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="mt-0.5 block text-xs text-ink-soft">
+                      Descuento extra, encima del precio del pack.
+                    </span>
+                  </label>
+                )}
 
                 <label className="block text-sm">
                   <span className="text-ink-soft">Nota</span>

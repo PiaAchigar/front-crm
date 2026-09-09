@@ -5,19 +5,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import { VenderModal } from "./VenderModal";
 
-const catalogo = {
+const PROMOS_BASE = [{ id: "p1", name: "Primavera", discountPercentage: 10, discountAmount: null }];
+
+const catalogo: any = {
   combos: [
-    { origen: "combo", id: "c1", nombre: "Combo Facial Premium", packSesiones: null, precioDesde: 51000 },
+    { origen: "combo", id: "c1", nombre: "Combo Facial Premium", packSesiones: null, packDescuentoPct: null, precioDesde: 51000 },
   ],
   depilacion: [
-    { origen: "depilacion", id: "d1", nombre: "Cuerpo Full", packSesiones: 3, precioDesde: 65000 },
+    { origen: "depilacion", id: "d1", nombre: "Cuerpo Full", packSesiones: 3, packDescuentoPct: 15, precioDesde: 65000 },
+  ],
+  capacitaciones: [
+    { origen: "capacitacion", id: "t1", nombre: "Formación en Depilación Láser", packSesiones: 1, packDescuentoPct: 0, precioDesde: 250000 },
   ],
   servicios: [
-    { origen: "servicio", id: "s1", nombre: "Venus Legacy 1 zona", packSesiones: 3, precioDesde: 10000 },
+    { origen: "servicio", id: "s1", nombre: "Venus Legacy 1 zona", packSesiones: 3, packDescuentoPct: 15, precioDesde: 10000 },
   ],
-  promociones: [
-    { id: "p1", name: "Primavera", discountPercentage: 10, discountAmount: null },
-  ],
+  promociones: [...PROMOS_BASE],
 };
 
 let cuerposDePost: any[] = [];
@@ -50,6 +53,10 @@ function wrapper({ children }: { children: ReactNode }) {
 beforeEach(() => {
   cuerposDePost = [];
   cobros = [];
+  catalogo.promociones = [...PROMOS_BASE];
+  catalogo.combos = [
+    { origen: "combo", id: "c1", nombre: "Combo Facial Premium", packSesiones: null, packDescuentoPct: null, precioDesde: 51000 },
+  ];
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
@@ -136,11 +143,26 @@ describe("VenderModal — saldo a favor", () => {
 });
 
 describe("VenderModal", () => {
-  it("separa el catálogo en las tres cosas que se venden", async () => {
+  it("separa el catálogo en las cuatro cosas que se venden", async () => {
     render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
     expect(await screen.findByRole("tab", { name: /packs de depilación/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /combos/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /servicios/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /capacitaciones/i })).toBeInTheDocument();
+  });
+
+  it("una capacitación se vende entera: no se eligen sesiones", async () => {
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await userEvent.click(await screen.findByRole("tab", { name: /capacitaciones/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /formación en depilación/i }));
+    expect(await screen.findByLabelText(/sesiones/i)).toBeDisabled();
+  });
+
+  it("una solapa vacía dice que no hay nada cargado, no que la búsqueda falló", async () => {
+    catalogo.combos = [];
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await userEvent.click(await screen.findByRole("tab", { name: /^combos$/i }));
+    expect(await screen.findByText(/no hay ninguno cargado/i)).toBeInTheDocument();
   });
 
   it("el buscador filtra por nombre", async () => {
@@ -175,7 +197,35 @@ describe("VenderModal", () => {
     const sesiones = screen.getByLabelText(/sesiones/i);
     await userEvent.clear(sesiones);
     await userEvent.type(sesiones, "2");
-    expect(await screen.findByText(/sin el descuento del pack/i)).toBeInTheDocument();
+    expect(await screen.findByText(/se venden al precio de lista/i)).toBeInTheDocument();
+  });
+
+  it("con las sesiones del pack dice el descuento, no una advertencia", async () => {
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await elegirCuerpoFull();
+    expect(await screen.findByText(/pack de 3/i)).toBeInTheDocument();
+    expect(screen.queryByText(/precio de lista, sin descuento/i)).not.toBeInTheDocument();
+  });
+
+  it("vender UNA sesión no dispara ninguna advertencia", async () => {
+    // Es la operación más común de todas: vender un servicio suelto. Avisarle
+    // "sin el descuento del pack" cada vez es ruido sobre lo normal.
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await elegirCuerpoFull();
+    // `clear` deja el campo en 1: el onChange no admite vacío ni cero.
+    await userEvent.clear(await screen.findByLabelText(/sesiones/i));
+    await waitFor(() => expect(screen.getByLabelText(/sesiones/i)).toHaveValue(1));
+    expect(screen.queryByText(/precio de lista, sin descuento/i)).not.toBeInTheDocument();
+  });
+
+  it("sin promos vigentes, no muestra el desplegable de promo", async () => {
+    // Un desplegable con una sola opción que dice "Sin promo" no informa nada
+    // y hace dudar de para qué está.
+    catalogo.promociones = [];
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await elegirCuerpoFull();
+    await screen.findByLabelText(/sesiones/i);
+    expect(screen.queryByLabelText(/promo/i)).not.toBeInTheDocument();
   });
 
   it("la promo se aplica sobre el precio del pack", async () => {

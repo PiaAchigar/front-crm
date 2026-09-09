@@ -50,7 +50,7 @@ export type Compra = {
   sessions: SesionDeCompra[];
 };
 
-export type OrigenVenta = "combo" | "depilacion" | "servicio";
+export type OrigenVenta = "combo" | "depilacion" | "servicio" | "capacitacion";
 
 /** Un item del catálogo, ya normalizado por el backend: los tres orígenes
  *  llegan con la misma forma para que la pantalla no aprenda tres modelos. */
@@ -60,6 +60,8 @@ export type ItemDeCatalogo = {
   nombre: string;
   /** Sesiones del pack, si es un pack. NULL en los combos genéricos. */
   packSesiones: number | null;
+  /** El descuento que aplica ese pack, para poder decirlo en pantalla. */
+  packDescuentoPct: number | null;
   precioDesde: number;
 };
 
@@ -74,6 +76,7 @@ export type Catalogo = {
   combos: ItemDeCatalogo[];
   depilacion: ItemDeCatalogo[];
   servicios: ItemDeCatalogo[];
+  capacitaciones: ItemDeCatalogo[];
   promociones: PromoVendible[];
 };
 
@@ -90,6 +93,7 @@ export type Cotizacion = {
   comboId: string | null;
   depilationComboId: string | null;
   serviceId: string | null;
+  trainingId: string | null;
 };
 
 export function fetchCompras(customerId: string): Promise<Compra[]> {
