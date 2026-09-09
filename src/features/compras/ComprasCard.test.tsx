@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -38,6 +38,16 @@ const pack: Compra = {
 };
 
 let compras: Compra[] = [];
+let impacto = {
+  pagos: 0,
+  montoPagado: 0,
+  facturas: 0,
+  sesionesAgendadas: 0,
+  sesionesConsumidas: 0,
+  motivos: [] as string[],
+  borrable: true,
+};
+let borrados: string[] = [];
 
 function wrapper({ children }: { children: ReactNode }) {
   const qc = new QueryClient({
@@ -48,12 +58,29 @@ function wrapper({ children }: { children: ReactNode }) {
 
 beforeEach(() => {
   compras = [pack];
+  borrados = [];
+  impacto = {
+    pagos: 0,
+    montoPagado: 0,
+    facturas: 0,
+    sesionesAgendadas: 0,
+    sesionesConsumidas: 0,
+    motivos: [],
+    borrable: true,
+  };
   vi.stubGlobal(
     "fetch",
-    vi.fn(async (url: RequestInfo | URL) => {
+    vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
       const u = String(url);
       if (u.includes("/purchases/catalog")) {
         return { ok: true, status: 200, json: async () => ({ combos: [], depilacion: [], servicios: [], promociones: [] }) };
+      }
+      if (u.includes("/delete-impact")) {
+        return { ok: true, status: 200, json: async () => impacto };
+      }
+      if (init?.method === "DELETE") {
+        borrados.push(u);
+        return { ok: true, status: 204, json: async () => ({}) };
       }
       if (u.includes("/purchases")) return { ok: true, status: 200, json: async () => compras };
       return { ok: true, status: 200, json: async () => ({}) };
@@ -106,6 +133,46 @@ describe("ComprasCard", () => {
     render(<ComprasCard customerId="cu1" />, { wrapper });
     expect(await screen.findByText("Cancelada")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^cancelar compra$/i })).not.toBeInTheDocument();
+  });
+
+  it("una venta sin nada colgando se elimina de verdad", async () => {
+    render(<ComprasCard customerId="cu1" />, { wrapper });
+    await userEvent.click(await screen.findByRole("button", { name: /^eliminar$/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /eliminar para siempre/i }));
+    await waitFor(() => expect(borrados).toHaveLength(1));
+  });
+
+  it("el cartel avisa que no queda rastro", async () => {
+    // Es la diferencia con cancelar, y hay que decirla antes de apretar.
+    render(<ComprasCard customerId="cu1" />, { wrapper });
+    await userEvent.click(await screen.findByRole("button", { name: /^eliminar$/i }));
+    expect(await screen.findByText(/no va a quedar registro/i)).toBeInTheDocument();
+  });
+
+  it("si tiene un pago, explica por qué no se puede y ofrece cancelar", async () => {
+    impacto = { ...impacto, pagos: 1, montoPagado: 66000, motivos: ["ya tiene 1 pago cobrado por $66.000"], borrable: false };
+    render(<ComprasCard customerId="cu1" />, { wrapper });
+    await userEvent.click(await screen.findByRole("button", { name: /^eliminar$/i }));
+
+    expect(await screen.findByText(/ya tiene 1 pago cobrado por \$66\.000/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /cancelar la compra/i })).toBeInTheDocument();
+    // Y no ofrece borrarla igual: sería ofrecer algo que el backend rechaza.
+    expect(screen.queryByRole("button", { name: /eliminar para siempre/i })).not.toBeInTheDocument();
+  });
+
+  it("no borra nada si está bloqueada", async () => {
+    impacto = { ...impacto, facturas: 1, motivos: ["está facturada (1 factura la incluye)"], borrable: false };
+    render(<ComprasCard customerId="cu1" />, { wrapper });
+    await userEvent.click(await screen.findByRole("button", { name: /^eliminar$/i }));
+    await screen.findByText(/está facturada/i);
+    expect(borrados).toHaveLength(0);
+  });
+
+  it("una compra cancelada igual se puede eliminar si no cuelga nada", async () => {
+    // Cancelar por error y querer limpiarlo es el mismo caso: no pasó nada.
+    compras = [{ ...pack, cancelledAt: "2026-09-09T10:00:00.000Z" }];
+    render(<ComprasCard customerId="cu1" />, { wrapper });
+    expect(await screen.findByRole("button", { name: /^eliminar$/i })).toBeInTheDocument();
   });
 
   it("el botón de vender abre la pantalla de venta", async () => {

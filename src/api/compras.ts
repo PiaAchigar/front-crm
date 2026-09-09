@@ -118,3 +118,22 @@ export function cancelarCompra(id: string, reason?: string | null) {
     body: JSON.stringify({ reason: reason ?? null }),
   });
 }
+
+/** Qué cuelga de una compra y si por eso se puede borrar. */
+export type ImpactoDeBorrado = {
+  pagos: number;
+  montoPagado: number;
+  facturas: number;
+  sesionesAgendadas: number;
+  sesionesConsumidas: number;
+  motivos: string[];
+  borrable: boolean;
+};
+
+export function fetchImpactoDeBorrado(id: string): Promise<ImpactoDeBorrado> {
+  return apiFetch(`/api/crm/purchases/${id}/delete-impact`);
+}
+
+export function eliminarCompra(id: string) {
+  return apiFetch<void>(`/api/crm/purchases/${id}`, { method: "DELETE" });
+}

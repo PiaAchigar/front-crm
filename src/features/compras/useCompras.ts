@@ -4,8 +4,10 @@ import {
   type OrigenVenta,
   cancelarCompra,
   cotizarVenta,
+  eliminarCompra,
   fetchCatalogoVendible,
   fetchCompras,
+  fetchImpactoDeBorrado,
   venderCompra,
 } from "../../api/compras";
 
@@ -73,6 +75,26 @@ export function useCancelarCompra(customerId: string | null) {
   return useMutation({
     mutationFn: ({ id, reason }: { id: string; reason?: string | null }) =>
       cancelarCompra(id, reason),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["compras", customerId] }),
+  });
+}
+
+/** Se consulta al abrir el cartel. El backend lo vuelve a calcular al borrar:
+ *  entre el preview y la confirmación le puede haber entrado un cobro. */
+export function useImpactoDeBorrado(id: string | null) {
+  return useQuery({
+    queryKey: ["compra-delete-impact", id],
+    queryFn: () => fetchImpactoDeBorrado(id!),
+    enabled: !!id,
+    // Sin caché: lo que importa es el estado de ahora, no el de hace un rato.
+    staleTime: 0,
+  });
+}
+
+export function useEliminarCompra(customerId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => eliminarCompra(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["compras", customerId] }),
   });
 }

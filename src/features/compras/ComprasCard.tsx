@@ -9,7 +9,12 @@ import {
   pesos,
   progresoDeSesiones,
 } from "../../lib/compras-ui";
-import { useCancelarCompra, useCompras } from "./useCompras";
+import {
+  useCancelarCompra,
+  useCompras,
+  useEliminarCompra,
+  useImpactoDeBorrado,
+} from "./useCompras";
 import { VenderModal } from "./VenderModal";
 
 /**
@@ -66,6 +71,7 @@ export function ComprasCard({ customerId }: { customerId: string }) {
 function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: string }) {
   const [abierta, setAbierta] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
+  const [borrando, setBorrando] = useState(false);
   const cancelar = useCancelarCompra(customerId);
 
   const estado = estadoDeCompra(compra);
@@ -119,6 +125,11 @@ function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: stri
             Cancelar compra
           </button>
         )}
+        {/* Eliminar también se ofrece sobre una compra cancelada: cancelar por
+            error y querer limpiarlo es el mismo caso — no pasó nada. */}
+        <button className="text-ink-soft hover:underline" onClick={() => setBorrando(true)}>
+          Eliminar
+        </button>
       </div>
 
       {abierta && (
@@ -149,6 +160,18 @@ function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: stri
         </table>
       )}
 
+      {borrando && (
+        <EliminarCompraDialog
+          compra={compra}
+          customerId={customerId}
+          onClose={() => setBorrando(false)}
+          onCancelarEnSuLugar={() => {
+            setBorrando(false);
+            setConfirmando(true);
+          }}
+        />
+      )}
+
       {confirmando && (
         <ConfirmDialog
           title={`¿Cancelar "${compra.description ?? "esta compra"}"?`}
@@ -171,5 +194,77 @@ function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: stri
         />
       )}
     </li>
+  );
+}
+
+/**
+ * El cartel de eliminar, que en realidad son dos.
+ *
+ * Antes de ofrecer nada le pregunta al backend qué cuelga de la compra. Si no
+ * cuelga nada, ofrece borrarla para siempre. Si cuelga algo, **no ofrece
+ * borrar**: explica qué lo impide y ofrece lo único que sí se puede hacer, que
+ * es cancelarla. Mostrar un botón que el backend va a rechazar sería mandar a
+ * Laura contra una pared.
+ */
+function EliminarCompraDialog({
+  compra,
+  customerId,
+  onClose,
+  onCancelarEnSuLugar,
+}: {
+  compra: Compra;
+  customerId: string;
+  onClose: () => void;
+  onCancelarEnSuLugar: () => void;
+}) {
+  const { data: impacto, isLoading } = useImpactoDeBorrado(compra.id);
+  const eliminar = useEliminarCompra(customerId);
+  const nombre = compra.description ?? "esta compra";
+
+  if (isLoading || !impacto) {
+    return (
+      <ConfirmDialog
+        title="Revisando si se puede eliminar…"
+        description="Estamos viendo si tiene pagos, facturas o turnos."
+        confirmLabel="Esperá"
+        isPending
+        onConfirm={() => {}}
+        onClose={onClose}
+      />
+    );
+  }
+
+  if (!impacto.borrable) {
+    return (
+      <ConfirmDialog
+        title={`No se puede eliminar "${nombre}"`}
+        description="Algo ya depende de esta compra, así que borrarla dejaría datos apuntando a algo que no existe. Lo que sí podés hacer es cancelarla: queda en la ficha, dada de baja."
+        points={impacto.motivos}
+        confirmLabel="Cancelar la compra"
+        cancelLabel="Volver"
+        onConfirm={onCancelarEnSuLugar}
+        onClose={onClose}
+      />
+    );
+  }
+
+  return (
+    <ConfirmDialog
+      title={`¿Eliminar "${nombre}" para siempre?`}
+      description="Esto es para una venta cargada por error. No va a quedar registro de que existió."
+      points={[
+        "No tiene pagos, ni facturas, ni sesiones agendadas o consumidas: no se pierde nada.",
+        "Se borra junto con sus sesiones sin usar.",
+        "Si en cambio la clienta compró de verdad y se dio de baja, cerrá esto y usá 'Cancelar compra': eso deja el registro.",
+      ]}
+      confirmLabel="Eliminar para siempre"
+      pendingLabel="Eliminando…"
+      cancelLabel="Volver"
+      tone="danger"
+      isPending={eliminar.isPending}
+      error={eliminar.error ? (eliminar.error as Error).message : null}
+      onConfirm={() => eliminar.mutate(compra.id, { onSuccess: onClose })}
+      onClose={onClose}
+    />
   );
 }
