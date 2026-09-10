@@ -186,8 +186,6 @@ export type SaldoVencido = {
   vencido: number;
   vigente: number;
   origenes: {
-    /** El movimiento que acreditó esta plata. */
-    id: string | null;
     /** Lo que queda del lote: es lo que se pasaría a caja. */
     monto: number;
     /** Lo que se acreditó en su momento. Distinto de `monto` si la clienta
@@ -206,18 +204,6 @@ export function fetchSaldosVencidos(): Promise<{ clientes: SaldoVencido[]; total
 export function vencerSaldo(customerId: string) {
   return apiFetch<{ monto: number; detalle: string }>(
     `/api/crm/credits/${customerId}/expire`,
-    { method: "POST" },
-  );
-}
-
-/**
- * Deja el saldo vencido en la cuenta de la clienta y lo saca del aviso.
- *
- * No mueve plata: es lo contrario de `vencerSaldo`, no una variante.
- */
-export function ignorarVencimiento(customerId: string) {
-  return apiFetch<{ monto: number; lotes: number }>(
-    `/api/crm/credits/${customerId}/ignore-expiry`,
     { method: "POST" },
   );
 }

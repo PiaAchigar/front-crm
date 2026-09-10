@@ -13,7 +13,6 @@ import {
   fetchCompras,
   fetchImpactoDeBorrado,
   fetchSaldosVencidos,
-  ignorarVencimiento,
   venderCompra,
   vencerSaldo,
 } from "../../api/compras";
@@ -143,18 +142,6 @@ export function useVencerSaldo() {
       // El saldo de la ficha acaba de cambiar.
       qc.invalidateQueries({ queryKey: ["contact"] });
     },
-  });
-}
-
-/**
- * Perdona el vencimiento: la plata queda con la clienta y el aviso la deja de
- * nombrar. No invalida la ficha porque el saldo no cambió — sólo el aviso.
- */
-export function useIgnorarVencimiento() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (customerId: string) => ignorarVencimiento(customerId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["saldos-vencidos"] }),
   });
 }
 

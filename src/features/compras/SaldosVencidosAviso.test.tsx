@@ -8,7 +8,6 @@ import { SaldosVencidosAviso } from "./SaldosVencidosAviso";
 
 let respuesta: unknown = { clientes: [], total: 0 };
 let vencidos: string[] = [];
-let ignorados: string[] = [];
 
 const mariana = {
   customerId: "cu1",
@@ -18,7 +17,6 @@ const mariana = {
   vigente: 0,
   origenes: [
     {
-      id: "mv1",
       monto: 110667,
       original: 110667,
       acreditadoEl: "2026-05-01T10:00:00.000Z",
@@ -37,7 +35,6 @@ const sofia = {
   vigente: 0,
   origenes: [
     {
-      id: "mv9",
       monto: 80000,
       original: 100000,
       acreditadoEl: "2026-04-09T18:03:10.000Z",
@@ -61,7 +58,6 @@ function wrapper({ children }: { children: ReactNode }) {
 beforeEach(() => {
   respuesta = { clientes: [mariana], total: 110667 };
   vencidos = [];
-  ignorados = [];
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
@@ -69,10 +65,6 @@ beforeEach(() => {
       // Ojo con el orden: "/expired" contiene "/expire". Se distingue por el
       // método, que es lo que de verdad los separa.
       if (init?.method === "POST") {
-        if (u.includes("/ignore-expiry")) {
-          ignorados.push(u);
-          return { ok: true, status: 200, json: async () => ({ monto: 110667, lotes: 1 }) };
-        }
         vencidos.push(u);
         return { ok: true, status: 200, json: async () => ({ monto: 110667, detalle: "ok" }) };
       }
@@ -144,22 +136,6 @@ describe("SaldosVencidosAviso", () => {
     render(<SaldosVencidosAviso />, { wrapper });
     await screen.findByText(/mariana mansilla/i);
     expect(screen.queryByText(/ya usó/i)).not.toBeInTheDocument();
-  });
-
-  it("ignorar no pregunta y no pasa nada a caja", async () => {
-    // Es la salida que NO mueve plata: pedir confirmación para no hacer nada
-    // sería ruido, y lo irreversible es el otro botón.
-    render(<SaldosVencidosAviso />, { wrapper });
-    await userEvent.click(await screen.findByRole("button", { name: /ignorar/i }));
-    await waitFor(() => expect(ignorados).toHaveLength(1));
-    expect(ignorados[0]).toContain("cu1");
-    expect(vencidos).toHaveLength(0);
-  });
-
-  it("el botón ignorar aclara que la plata sigue siendo de la clienta", async () => {
-    render(<SaldosVencidosAviso />, { wrapper });
-    const boton = await screen.findByRole("button", { name: /ignorar/i });
-    expect(boton).toHaveAttribute("title", expect.stringMatching(/sigue siendo de la clienta/i));
   });
 
   it("con varias clientas, suma el total", async () => {
