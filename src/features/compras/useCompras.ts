@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   type Cotizacion,
   type MedioDePago,
@@ -18,6 +18,25 @@ import {
   venderCompra,
   vencerSaldo,
 } from "../../api/compras";
+
+/**
+ * Todo lo que queda viejo cuando se mueve plata de una clienta.
+ *
+ * Va en una sola función y no repetido en cada hook porque el bug fue
+ * exactamente ese: al agregar la card de saldo, las mutaciones que ya existían
+ * siguieron invalidando sólo las compras, y Laura tenía que recargar la página
+ * para ver el saldo a favor después de cancelar o devolver (2026-09-10).
+ *
+ * Las cuatro cosas se tocan entre sí: cancelar una compra acredita saldo, ese
+ * saldo puede estar vencido —y entonces cambia el aviso de la pantalla de
+ * Clientes—, y el `credit_balance` que muestra la ficha también se mueve.
+ */
+function invalidarPlataDe(qc: QueryClient, customerId: string | null) {
+  qc.invalidateQueries({ queryKey: ["compras", customerId] });
+  qc.invalidateQueries({ queryKey: ["saldo", customerId] });
+  qc.invalidateQueries({ queryKey: ["saldos-vencidos"] });
+  qc.invalidateQueries({ queryKey: ["contact"] });
+}
 
 export function useCompras(customerId: string | null) {
   return useQuery({
@@ -69,12 +88,9 @@ export function useVender(customerId: string | null) {
   return useMutation({
     mutationFn: (input: Cotizacion & { notes?: string | null; usarSaldo?: number }) =>
       venderCompra({ ...input, customerId: customerId! }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["compras", customerId] });
-      // La ficha muestra facturas y turnos que una venta todavía no toca, pero
-      // sí queda vieja en cuanto se cobre desde otra pantalla.
-      qc.invalidateQueries({ queryKey: ["contact"] });
-    },
+    // Vender puede consumir saldo a favor, así que la card de saldo también
+    // queda vieja.
+    onSuccess: () => invalidarPlataDe(qc, customerId),
   });
 }
 
@@ -83,7 +99,7 @@ export function useCancelarCompra(customerId: string | null) {
   return useMutation({
     mutationFn: ({ id, reason }: { id: string; reason?: string | null }) =>
       cancelarCompra(id, reason),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["compras", customerId] }),
+    onSuccess: () => invalidarPlataDe(qc, customerId),
   });
 }
 
@@ -103,7 +119,7 @@ export function useEliminarCompra(customerId: string | null) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => eliminarCompra(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["compras", customerId] }),
+    onSuccess: () => invalidarPlataDe(qc, customerId),
   });
 }
 
@@ -123,11 +139,7 @@ export function useDevolverPlata(customerId: string | null) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, notes }: { id: string; notes?: string | null }) => devolverPlata(id, notes),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["compras", customerId] });
-      // El saldo a favor vive en la ficha, y acaba de bajar.
-      qc.invalidateQueries({ queryKey: ["contact"] });
-    },
+    onSuccess: () => invalidarPlataDe(qc, customerId),
   });
 }
 
@@ -139,12 +151,7 @@ export function useVencerSaldo() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (customerId: string) => vencerSaldo(customerId),
-    onSuccess: (_r, customerId) => {
-      qc.invalidateQueries({ queryKey: ["saldos-vencidos"] });
-      // El saldo de la ficha acaba de cambiar.
-      qc.invalidateQueries({ queryKey: ["contact"] });
-      qc.invalidateQueries({ queryKey: ["saldo", customerId] });
-    },
+    onSuccess: (_r, customerId) => invalidarPlataDe(qc, customerId),
   });
 }
 
@@ -161,12 +168,9 @@ export function useAplazarVencimiento(customerId: string | null) {
   return useMutation({
     mutationFn: (input: { movimientoIds: string[]; nuevaFecha: string; motivo?: string }) =>
       aplazarVencimiento({ customerId: customerId!, ...input }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["saldo", customerId] });
-      // El aviso de la pantalla de Clientes se arma de lo mismo: si no se
-      // invalida, sigue nombrando a una clienta que ya no tiene nada vencido.
-      qc.invalidateQueries({ queryKey: ["saldos-vencidos"] });
-    },
+    // El aviso de la pantalla de Clientes se arma de lo mismo: si no se
+    // invalida, sigue nombrando a una clienta que ya no tiene nada vencido.
+    onSuccess: () => invalidarPlataDe(qc, customerId),
   });
 }
 
@@ -180,9 +184,6 @@ export function useCobrarCompra(customerId: string | null) {
       wantsInvoice: boolean;
       notes?: string | null;
     }) => cobrarCompra(input.id, input),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["compras", customerId] });
-      qc.invalidateQueries({ queryKey: ["contact"] });
-    },
+    onSuccess: () => invalidarPlataDe(qc, customerId),
   });
 }
