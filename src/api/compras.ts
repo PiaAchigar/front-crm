@@ -35,6 +35,9 @@ export type Compra = {
   // Derivados, calculados por el backend en cada lectura.
   /** Si ya se le devolvió la plata de esta compra, y cuánta. */
   devuelta: boolean;
+  /** La devolución exigía nota de crédito y sigue en borrador en el facturador.
+   *  Es información, no una acción: la nota se emite desde el facturador. */
+  notaDeCreditoPendiente?: boolean;
   devuelto: number;
   consumidas: number;
   /** Sesiones que la clienta perdió por no venir. Ya se cobraron. */

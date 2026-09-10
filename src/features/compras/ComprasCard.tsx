@@ -131,6 +131,19 @@ function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: stri
               Devolución realizada
             </span>
           )}
+          {/* La compra estaba facturada en ARCA: la devolución necesita una
+              nota de crédito y todavía está en borrador. Acá es un DATO, no un
+              botón — se emite desde el facturador, que es donde Laura hace la
+              facturación. Pero si la clienta llama preguntando, quien atiende
+              tiene que poder contestar sin abrir la otra app. */}
+          {compra.notaDeCreditoPendiente && (
+            <span
+              className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-800"
+              title="Se emite desde el Facturador, en Facturas: aparece como borrador de nota de crédito."
+            >
+              Falta la nota de crédito
+            </span>
+          )}
           <span className="text-sm font-semibold text-ink">{pesos(compra.finalAmount)}</span>
         </div>
       </div>
