@@ -272,6 +272,23 @@ describe("VenderModal", () => {
     expect(await screen.findByRole("heading", { name: /^cobrar$/i })).toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();
   });
+
+  it("si el saldo a favor cubre todo, NO pasa a cobrar: cierra", async () => {
+    // "Cobrar $0" no significa nada, y la única salida que quedaba era
+    // "Cobrar después" — sobre una compra que ya estaba paga.
+    const onClose = vi.fn();
+    render(
+      <VenderModal customerId="cu1" saldoAFavor={999000} onClose={onClose} />,
+      { wrapper },
+    );
+    await elegirCuerpoFull();
+    await screen.findByText("$195.000");
+    await userEvent.click(screen.getByRole("checkbox", { name: /usar.*saldo/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^vender$/i }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(screen.queryByRole("heading", { name: /^cobrar$/i })).not.toBeInTheDocument();
+  });
 });
 
 describe("VenderModal — el paso de cobro", () => {

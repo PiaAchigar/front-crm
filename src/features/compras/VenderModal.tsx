@@ -107,10 +107,22 @@ export function VenderModal({
       {
         onSuccess: (compra) => {
           const yaPagado = compra.pagadoConSaldo ?? 0;
+          const pendiente = Math.max(0, q.finalAmount - yaPagado);
+
+          // Si el saldo a favor cubrió todo no hay paso de cobro: pedirle a
+          // Laura que "cobre $0" no significa nada, y la única salida que le
+          // quedaba era "Cobrar después" —que promete un cobro inexistente
+          // sobre una compra que ya está paga— (reportado por Pia, 2026-09-10).
+          // La compra aparece en la lista con su pastilla verde: ese es el aviso.
+          if (pendiente === 0) {
+            onClose();
+            return;
+          }
+
           setVendida({
             id: compra.id,
             descripcion: q.description,
-            pendiente: Math.max(0, q.finalAmount - yaPagado),
+            pendiente,
             // El 40% es sobre el ACUMULADO: lo que el saldo a favor ya cubrió
             // cuenta, así que el mínimo es lo que falte para llegar.
             minimo: Math.max(
