@@ -46,14 +46,29 @@ export function useCompras(customerId: string | null) {
   });
 }
 
-/** El catálogo cambia poco y la pantalla de venta se abre y se cierra mucho:
- *  media hora fresco evita pedir 120 servicios en cada apertura. */
+/**
+ * El catálogo de lo que se puede vender, pedido de nuevo cada vez que se abre
+ * la pantalla de venta.
+ *
+ * Antes se guardaba fresco media hora para no pedir 120 servicios en cada
+ * apertura. El razonamiento tenía un agujero: el catálogo se carga en el
+ * DASHBOARD y se vende acá, son dos aplicaciones distintas, así que el CRM no
+ * se entera nunca de que cambió. Laura cargaba un combo, venía a venderlo y el
+ * modal le decía "Todavía no hay ninguno cargado en el catálogo" — durante
+ * media hora, sin más salida que recargar la pestaña a mano. Pasó de verdad
+ * (2026-09-10).
+ *
+ * `staleTime: 0` no significa esperar: React Query pinta al toque lo que tenía
+ * guardado y pide la versión nueva por detrás. Se conserva entonces lo que
+ * buscaba la media hora —que no haya pantalla en blanco— sin quedarse con un
+ * catálogo viejo.
+ */
 export function useCatalogoVendible(enabled: boolean) {
   return useQuery({
     queryKey: ["catalogo-vendible"],
     queryFn: fetchCatalogoVendible,
     enabled,
-    staleTime: 30 * 60 * 1000,
+    staleTime: 0,
   });
 }
 

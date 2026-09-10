@@ -62,7 +62,11 @@ beforeEach(() => {
     vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
       const u = String(url);
       if (u.includes("/purchases/catalog")) {
-        return { ok: true, status: 200, json: async () => catalogo };
+        // Una copia y no el objeto: una respuesta HTTP de verdad es siempre
+        // nueva, y devolver el mismo objeto hacía que tocar `catalogo` en el
+        // test tocara también lo que React Query tenía guardado — con lo cual
+        // un test de caché no podía distinguir nada.
+        return { ok: true, status: 200, json: async () => structuredClone(catalogo) };
       }
       if (u.includes("/purchases/quote")) {
         const body = JSON.parse(String(init?.body));
@@ -353,5 +357,47 @@ describe("VenderModal — el paso de cobro", () => {
     await screen.findByRole("heading", { name: /^cobrar$/i });
     expect(screen.getByLabelText(/monto/i)).toHaveValue(55333);
     expect(screen.queryByText(/mínimo del primer pago/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("VenderModal — el catálogo al reabrir", () => {
+  /**
+   * El combo se carga en el dashboard y se vende acá: son dos aplicaciones
+   * distintas, así que el CRM no tiene forma de enterarse de que el catálogo
+   * cambió. Si además lo guarda fresco mucho rato, Laura carga un combo, viene
+   * a venderlo y no está.
+   *
+   * Pasó de verdad (2026-09-10): "Combo1 - Prueba" existía en el catálogo del
+   * backend y el modal decía "Todavía no hay ninguno cargado en el catálogo".
+   */
+  it("al reabrirlo aparece un combo cargado mientras tanto", async () => {
+    // Un solo cliente para las dos aperturas: en la app real la caché vive en
+    // la pestaña, no en el modal.
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const conCache = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+    );
+
+    const primera = render(
+      <VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />,
+      { wrapper: conCache },
+    );
+    await userEvent.click(await screen.findByRole("tab", { name: /^combos$/i }));
+    await screen.findByRole("button", { name: /combo facial premium/i });
+    primera.unmount();
+
+    catalogo.combos = [
+      ...catalogo.combos,
+      { origen: "combo", id: "c2", nombre: "Combo1 - Prueba", packSesiones: null, packDescuentoPct: null, precioDesde: 213200 },
+    ];
+
+
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, {
+      wrapper: conCache,
+    });
+    await userEvent.click(await screen.findByRole("tab", { name: /^combos$/i }));
+    expect(await screen.findByRole("button", { name: /combo1 - prueba/i })).toBeInTheDocument();
   });
 });
