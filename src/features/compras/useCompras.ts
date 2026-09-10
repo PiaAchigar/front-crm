@@ -12,6 +12,8 @@ import {
   fetchChequeoDeDevolucion,
   fetchCompras,
   fetchImpactoDeBorrado,
+  aplazarVencimiento,
+  fetchSaldoDeCliente,
   fetchSaldosVencidos,
   venderCompra,
   vencerSaldo,
@@ -137,10 +139,33 @@ export function useVencerSaldo() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (customerId: string) => vencerSaldo(customerId),
-    onSuccess: () => {
+    onSuccess: (_r, customerId) => {
       qc.invalidateQueries({ queryKey: ["saldos-vencidos"] });
       // El saldo de la ficha acaba de cambiar.
       qc.invalidateQueries({ queryKey: ["contact"] });
+      qc.invalidateQueries({ queryKey: ["saldo", customerId] });
+    },
+  });
+}
+
+export function useSaldoDeCliente(customerId: string | null) {
+  return useQuery({
+    queryKey: ["saldo", customerId],
+    queryFn: () => fetchSaldoDeCliente(customerId!),
+    enabled: !!customerId,
+  });
+}
+
+export function useAplazarVencimiento(customerId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { movimientoIds: string[]; nuevaFecha: string; motivo?: string }) =>
+      aplazarVencimiento({ customerId: customerId!, ...input }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["saldo", customerId] });
+      // El aviso de la pantalla de Clientes se arma de lo mismo: si no se
+      // invalida, sigue nombrando a una clienta que ya no tiene nada vencido.
+      qc.invalidateQueries({ queryKey: ["saldos-vencidos"] });
     },
   });
 }

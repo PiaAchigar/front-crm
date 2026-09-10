@@ -11,6 +11,7 @@ import {
 import { ContactFormModal } from "./ContactFormModal";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { ComprasCard } from "../compras/ComprasCard";
+import { SaldoCard } from "../compras/SaldoCard";
 import { formatDate, formatDateTimeToDate } from "../../lib/format";
 
 function money(v: string | null): string {
@@ -123,13 +124,17 @@ export function ContactDetailPage() {
       {customer && (
         <section className="rounded-xl border border-surface-high bg-surface-low p-4">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-soft">Cuenta de cliente</h2>
+          {/* El saldo a favor se fue a su propia card: acá era un número solo
+              que sumaba lo vigente con lo vencido, y esa suma no se puede usar
+              para responderle nada a la clienta. */}
           <dl className="grid grid-cols-3 gap-x-6 text-sm">
-            <div><dt className="text-ink-soft">Saldo a favor</dt><dd className="font-medium">{money(customer.creditBalance)}</dd></div>
             <div><dt className="text-ink-soft">DNI</dt><dd>{customer.dni ?? "—"}</dd></div>
             <div><dt className="text-ink-soft">CUIT</dt><dd>{customer.cuit ?? "—"}</dd></div>
           </dl>
         </section>
       )}
+
+      {customer && <SaldoCard customerId={customer.id} />}
 
       {/* Compras: packs, combos y servicios pagados por adelantado. Necesita la
           cuenta de cliente — sin ella no hay a quién asociarle la compra. */}

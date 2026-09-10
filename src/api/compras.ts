@@ -208,6 +208,52 @@ export function vencerSaldo(customerId: string) {
   );
 }
 
+/** Una acreditación viva, con su fecha y su historial de aplazos. */
+export type LoteDeSaldo = {
+  id: string | null;
+  /** Lo que queda: es lo que se pasaría a caja. */
+  monto: number;
+  /** Lo que se acreditó. Distinto de `monto` si gastó una parte. */
+  original: number;
+  acreditadoEl: string;
+  venceEl: string | null;
+  vencido: boolean;
+  detalle: string | null;
+  /** Cada vez que se corrió la fecha, en texto. */
+  aplazos: string[];
+};
+
+export type EstadoDeSaldo = {
+  vigente: number;
+  vencido: number;
+  total: number;
+  lotes: LoteDeSaldo[];
+};
+
+export function fetchSaldoDeCliente(customerId: string): Promise<EstadoDeSaldo> {
+  return apiFetch(`/api/crm/credits/${customerId}`);
+}
+
+/** Corre para adelante el vencimiento de uno o varios saldos. */
+export function aplazarVencimiento(input: {
+  customerId: string;
+  movimientoIds: string[];
+  nuevaFecha: string;
+  motivo?: string;
+}) {
+  return apiFetch<{ aplazados: number; nuevaFecha: string }>(
+    `/api/crm/credits/${input.customerId}/postpone`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        movimientoIds: input.movimientoIds,
+        nuevaFecha: input.nuevaFecha,
+        motivo: input.motivo,
+      }),
+    },
+  );
+}
+
 export type MedioDePago = "cash" | "bank_transfer" | "mercadopago" | "debit_card" | "credit_card";
 
 /** Cuánto falta cobrar de una compra y cuál es el mínimo de ahora. */
