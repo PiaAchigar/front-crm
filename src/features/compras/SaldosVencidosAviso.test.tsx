@@ -8,6 +8,7 @@ import { SaldosVencidosAviso } from "./SaldosVencidosAviso";
 
 let respuesta: unknown = { clientes: [], total: 0 };
 let vencidos: string[] = [];
+let ignorados: string[] = [];
 
 const mariana = {
   customerId: "cu1",
@@ -17,10 +18,31 @@ const mariana = {
   vigente: 0,
   origenes: [
     {
+      id: "mv1",
       monto: 110667,
+      original: 110667,
       acreditadoEl: "2026-05-01T10:00:00.000Z",
       venceEl: "2026-08-01T10:00:00.000Z",
       detalle: 'Cancelación de "Cuerpo Full — pack de 3"',
+    },
+  ],
+};
+
+/** Sofía gastó parte del lote: acreditados 100.000, le quedan 80.000. */
+const sofia = {
+  customerId: "cu9",
+  contactId: "co9",
+  nombre: "Sofía Herrera",
+  vencido: 80000,
+  vigente: 0,
+  origenes: [
+    {
+      id: "mv9",
+      monto: 80000,
+      original: 100000,
+      acreditadoEl: "2026-04-09T18:03:10.000Z",
+      venceEl: "2026-07-09T18:03:10.000Z",
+      detalle: 'Cancelación de "Alpha Synergy — pack de 4"',
     },
   ],
 };
@@ -39,6 +61,7 @@ function wrapper({ children }: { children: ReactNode }) {
 beforeEach(() => {
   respuesta = { clientes: [mariana], total: 110667 };
   vencidos = [];
+  ignorados = [];
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
@@ -46,6 +69,10 @@ beforeEach(() => {
       // Ojo con el orden: "/expired" contiene "/expire". Se distingue por el
       // método, que es lo que de verdad los separa.
       if (init?.method === "POST") {
+        if (u.includes("/ignore-expiry")) {
+          ignorados.push(u);
+          return { ok: true, status: 200, json: async () => ({ monto: 110667, lotes: 1 }) };
+        }
         vencidos.push(u);
         return { ok: true, status: 200, json: async () => ({ monto: 110667, detalle: "ok" }) };
       }
@@ -93,6 +120,46 @@ describe("SaldosVencidosAviso", () => {
     await userEvent.click(await screen.findByRole("button", { name: /pasarlo a caja/i }));
     await waitFor(() => expect(vencidos).toHaveLength(1));
     expect(vencidos[0]).toContain("cu1");
+  });
+
+  /**
+   * La redacción vieja ponía una sola fecha suelta al lado del origen y se leía
+   * como la fecha de la cancelación. Pasó de verdad (2026-09-10).
+   */
+  it("distingue la fecha en que se acreditó de la de vencimiento", async () => {
+    respuesta = { clientes: [sofia], total: 80000 };
+    render(<SaldosVencidosAviso />, { wrapper });
+    expect(await screen.findByText(/acreditado el 09\/04\/2026/i)).toBeInTheDocument();
+    expect(screen.getByText(/venció el 09\/07\/2026/i)).toBeInTheDocument();
+  });
+
+  it("explica por qué quedan 80.000 de 100.000", async () => {
+    // Sin esto el número no se puede reconstruir mirando la pantalla.
+    respuesta = { clientes: [sofia], total: 80000 };
+    render(<SaldosVencidosAviso />, { wrapper });
+    expect(await screen.findByText(/ya usó \$20\.000/i)).toBeInTheDocument();
+  });
+
+  it("no habla de plata usada cuando el lote está entero", async () => {
+    render(<SaldosVencidosAviso />, { wrapper });
+    await screen.findByText(/mariana mansilla/i);
+    expect(screen.queryByText(/ya usó/i)).not.toBeInTheDocument();
+  });
+
+  it("ignorar no pregunta y no pasa nada a caja", async () => {
+    // Es la salida que NO mueve plata: pedir confirmación para no hacer nada
+    // sería ruido, y lo irreversible es el otro botón.
+    render(<SaldosVencidosAviso />, { wrapper });
+    await userEvent.click(await screen.findByRole("button", { name: /ignorar/i }));
+    await waitFor(() => expect(ignorados).toHaveLength(1));
+    expect(ignorados[0]).toContain("cu1");
+    expect(vencidos).toHaveLength(0);
+  });
+
+  it("el botón ignorar aclara que la plata sigue siendo de la clienta", async () => {
+    render(<SaldosVencidosAviso />, { wrapper });
+    const boton = await screen.findByRole("button", { name: /ignorar/i });
+    expect(boton).toHaveAttribute("title", expect.stringMatching(/sigue siendo de la clienta/i));
   });
 
   it("con varias clientas, suma el total", async () => {

@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { formatDateTimeToDate } from "../../lib/format";
 import { pesos } from "../../lib/compras-ui";
-import { useSaldosVencidos, useVencerSaldo } from "./useCompras";
+import { useIgnorarVencimiento, useSaldosVencidos, useVencerSaldo } from "./useCompras";
 
 /**
  * Aviso de saldos a favor vencidos.
@@ -15,11 +15,16 @@ import { useSaldosVencidos, useVencerSaldo } from "./useCompras";
  * El pase a caja **se confirma, no pasa solo** (decisión de Pia, 2026-09-09):
  * es plata que cambia de dueño, y si la clienta aparece al otro día
  * reclamando, con el automático Laura se entera cuando ya está hecho.
+ *
+ * Y tiene **dos salidas, no una** (2026-09-10): "Pasar a caja" se queda la
+ * plata, "Ignorar" se la deja a la clienta. Con una sola, el único modo de
+ * sacar del aviso un caso ya decidido era quedarse el dinero.
  */
 export function SaldosVencidosAviso() {
   const { data } = useSaldosVencidos();
   const [confirmando, setConfirmando] = useState<string | null>(null);
   const vencer = useVencerSaldo();
+  const ignorar = useIgnorarVencimiento();
 
   if (!data?.clientes.length) return null;
 
@@ -39,6 +44,14 @@ export function SaldosVencidosAviso() {
         clienta.
       </p>
 
+      {/* "Ignorar" no abre diálogo, así que si falla no hay dónde verlo: sin
+          esto el botón parece no hacer nada. */}
+      {ignorar.error && (
+        <p className="mt-2 text-xs font-medium text-red-700">
+          No se pudo ignorar: {(ignorar.error as Error).message}
+        </p>
+      )}
+
       <ul className="mt-3 flex flex-col gap-2">
         {data.clientes.map((c) => (
           <li
@@ -50,20 +63,45 @@ export function SaldosVencidosAviso() {
                 {c.nombre ?? "Sin nombre"}
               </Link>
               {/* De dónde salió cada peso. Meses después, "saldo vencido de
-                  Mariana" sin el origen no le dice nada a nadie. */}
-              <ul className="mt-0.5 text-xs text-ink-soft">
+                  Mariana" sin el origen no le dice nada a nadie.
+
+                  Las dos fechas van etiquetadas ("acreditado el" / "venció
+                  el"): con una sola, la de vencimiento se leía como la fecha
+                  de la cancelación —pasó de verdad, 2026-09-10—. Y si la
+                  clienta gastó parte, se dice cuánto: si no, un lote de
+                  $100.000 que muestra $80.000 no se puede explicar mirando
+                  la pantalla. */}
+              <ul className="mt-1 flex flex-col gap-0.5 text-xs text-ink-soft">
                 {c.origenes.map((o, i) => (
-                  <li key={i}>
-                    {pesos(o.monto)} — {o.detalle ?? "saldo a favor"}
+                  <li key={o.id ?? i}>
+                    <span className="font-medium text-ink">{pesos(o.monto)}</span>
+                    {" — "}
+                    {o.detalle ?? "saldo a favor"}
+                    <br />
+                    Acreditado el {formatDateTimeToDate(o.acreditadoEl)}
                     {o.venceEl ? ` · venció el ${formatDateTimeToDate(o.venceEl)}` : ""}
+                    {o.original > o.monto && (
+                      <> · de {pesos(o.original)}, ya usó {pesos(o.original - o.monto)}</>
+                    )}
                   </li>
                 ))}
               </ul>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <span className="text-sm font-semibold text-ink">{pesos(c.vencido)}</span>
+              {/* "Ignorar" primero y en gris: es la salida que no mueve plata,
+                  y la irreversible no debería ser la que queda más a mano. */}
+              <button
+                className="rounded-full px-3 py-1 text-xs text-ink-soft hover:bg-surface-high disabled:opacity-40"
+                title="Al ignorar, la plata sigue siendo de la clienta: sólo se saca el aviso."
+                disabled={ignorar.isPending}
+                onClick={() => ignorar.mutate(c.customerId)}
+              >
+                Ignorar
+              </button>
               <button
                 className="rounded-full border border-amber-300 px-3 py-1 text-xs text-amber-900 hover:bg-amber-100"
+                title="Saca la plata de la cuenta de la clienta y la suma a la caja del día."
                 onClick={() => setConfirmando(c.customerId)}
               >
                 Pasar a caja
