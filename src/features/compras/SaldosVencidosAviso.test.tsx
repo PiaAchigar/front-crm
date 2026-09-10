@@ -138,6 +138,72 @@ describe("SaldosVencidosAviso", () => {
     expect(screen.queryByText(/ya usó/i)).not.toBeInTheDocument();
   });
 
+  /**
+   * "Ignorar" es un descarte de UI: no llama a la API, no toca la plata y no
+   * deja rastro. Lo único que hace es dejar de mostrarse.
+   */
+  describe("ignorar el aviso", () => {
+    it("saca a esa clienta sin llamar a la API", async () => {
+      render(<SaldosVencidosAviso />, { wrapper });
+      await userEvent.click(await screen.findByRole("button", { name: /^ignorar$/i }));
+      await waitFor(() => expect(screen.queryByText(/mariana mansilla/i)).not.toBeInTheDocument());
+      expect(vencidos).toHaveLength(0);
+    });
+
+    it("ignorar una no esconde a las demás", async () => {
+      respuesta = {
+        clientes: [mariana, { ...mariana, customerId: "cu2", nombre: "Ana Pérez", vencido: 20000 }],
+        total: 130667,
+      };
+      render(<SaldosVencidosAviso />, { wrapper });
+      await screen.findByText(/ana pérez/i);
+      await userEvent.click(screen.getAllByRole("button", { name: /^ignorar$/i })[0]!);
+      await waitFor(() => expect(screen.queryByText(/mariana mansilla/i)).not.toBeInTheDocument());
+      expect(screen.getByText(/ana pérez/i)).toBeInTheDocument();
+    });
+
+    it("al ignorar una, el total deja de contarla", async () => {
+      // Si el encabezado siguiera diciendo $130.667 con una sola fila abajo,
+      // el número no cerraría con lo que se ve.
+      respuesta = {
+        clientes: [mariana, { ...mariana, customerId: "cu2", nombre: "Ana Pérez", vencido: 20000 }],
+        total: 130667,
+      };
+      render(<SaldosVencidosAviso />, { wrapper });
+      await screen.findByText(/\$130\.667/);
+      await userEvent.click(screen.getAllByRole("button", { name: /^ignorar$/i })[0]!);
+      await waitFor(() => expect(screen.queryByText(/\$130\.667/)).not.toBeInTheDocument());
+      expect(screen.getAllByText(/\$20\.000/).length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("la × cierra el aviso entero", async () => {
+      render(<SaldosVencidosAviso />, { wrapper });
+      await screen.findByText(/mariana mansilla/i);
+      await userEvent.click(screen.getByRole("button", { name: /cerrar el aviso/i }));
+      await waitFor(() =>
+        expect(screen.queryByText(/saldo a favor vencido/i)).not.toBeInTheDocument(),
+      );
+    });
+
+    it("el descarte se olvida al volver a montar la pantalla", async () => {
+      // Es la característica, no una limitación: un saldo vencido que nadie
+      // resolvió tiene que seguir molestando.
+      const { unmount } = render(<SaldosVencidosAviso />, { wrapper });
+      await userEvent.click(await screen.findByRole("button", { name: /^ignorar$/i }));
+      await waitFor(() => expect(screen.queryByText(/mariana mansilla/i)).not.toBeInTheDocument());
+      unmount();
+
+      render(<SaldosVencidosAviso />, { wrapper });
+      expect(await screen.findByText(/mariana mansilla/i)).toBeInTheDocument();
+    });
+
+    it("avisa que no cambia nada", async () => {
+      render(<SaldosVencidosAviso />, { wrapper });
+      const boton = await screen.findByRole("button", { name: /^ignorar$/i });
+      expect(boton).toHaveAttribute("title", expect.stringMatching(/la plata sigue vencida/i));
+    });
+  });
+
   it("con varias clientas, suma el total", async () => {
     respuesta = {
       clientes: [mariana, { ...mariana, customerId: "cu2", nombre: "Ana Pérez", vencido: 20000 }],
