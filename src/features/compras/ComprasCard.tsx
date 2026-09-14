@@ -414,9 +414,10 @@ function DevolverPlataDialog({
       points={[
         `Sale de la caja del día como un egreso, con el detalle de "${nombre}".`,
         `Le baja el saldo a favor de ${pesos(chequeo.saldoDisponible)} a ${pesos(chequeo.saldoDisponible - chequeo.monto)}.`,
-        // `usadas` son FILAS de servicio comprado, no turnos: un turno puede
-        // consumir varias de una (un combo entero en una visita). Decir
-        // "sesiones" acá contaba mal en voz alta.
+        // `usadas` cuenta FILAS de servicio comprado, que es la unidad con la
+        // que el backend prorratea la plata de la cancelación. Decirle
+        // "sesiones" al número que se está descontando lo desalineaba del
+        // resto de la card, que desde V3b habla de servicios.
         chequeo.usadas > 0
           ? `Ya descontamos ${chequeo.usadas} servicio(s) que usó: esos se cobraron.`
           : "No usó ningún servicio, así que vuelve todo lo que pagó.",
