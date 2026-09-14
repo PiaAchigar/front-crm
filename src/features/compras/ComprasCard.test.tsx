@@ -34,10 +34,47 @@ const pack: Compra = {
   pagado: 100000,
   saldo: 66000,
   saldada: false,
-  sessions: [
-    { id: "s1", sessionNumber: 1, appointmentId: "a1", appointmentStart: "2026-09-01T13:00:00.000Z", consumedAt: "2026-09-01T14:00:00.000Z", estado: "consumida" },
-    { id: "s2", sessionNumber: 2, appointmentId: "a2", appointmentStart: "2026-10-01T13:00:00.000Z", consumedAt: null, estado: "agendada" },
-    { id: "s3", sessionNumber: 3, appointmentId: null, appointmentStart: null, consumedAt: null, estado: "disponible" },
+  servicios: [
+    { id: "s1", serviceId: "svc-full", serviceName: "Cuerpo Full", repeticion: 1, orden: 1, appointmentId: "a1", appointmentStart: "2026-09-01T13:00:00.000Z", consumedAt: "2026-09-01T14:00:00.000Z", estado: "consumida" },
+    { id: "s2", serviceId: "svc-full", serviceName: "Cuerpo Full", repeticion: 2, orden: 1, appointmentId: "a2", appointmentStart: "2026-10-01T13:00:00.000Z", consumedAt: null, estado: "agendada" },
+    { id: "s3", serviceId: "svc-full", serviceName: "Cuerpo Full", repeticion: 3, orden: 1, appointmentId: null, appointmentStart: null, consumedAt: null, estado: "disponible" },
+  ],
+};
+
+const comboPurchase: Compra = {
+  ...pack,
+  id: "cp-combo",
+  description: "Combo1 - Prueba",
+  sessionsTotal: 1,
+  consumidas: 1,
+  perdidas: 0,
+  usadas: 1,
+  agendadas: 0,
+  disponibles: 1,
+  vencidas: 0,
+  servicios: [
+    {
+      id: "sv1",
+      serviceId: "s1",
+      serviceName: "Baby Botox",
+      repeticion: 1,
+      orden: 1,
+      appointmentId: "ap1",
+      appointmentStart: "2026-09-12T13:00:00.000Z",
+      consumedAt: "2026-09-12T14:00:00.000Z",
+      estado: "consumida",
+    },
+    {
+      id: "sv2",
+      serviceId: "s2",
+      serviceName: "Depilación facial con hilo",
+      repeticion: 1,
+      orden: 1,
+      appointmentId: null,
+      appointmentStart: null,
+      consumedAt: null,
+      estado: "disponible",
+    },
   ],
 };
 
@@ -139,11 +176,11 @@ describe("ComprasCard", () => {
     expect(await screen.findByText("Debe $66.000")).toBeInTheDocument();
   });
 
-  it("cuenta las sesiones usadas, sin contar las agendadas", async () => {
-    // Un turno se puede cancelar y la sesión vuelve: si contara, la barra
+  it("cuenta los servicios usados, sin contar los agendados", async () => {
+    // Un turno se puede cancelar y el servicio vuelve: si contara, la barra
     // retrocedería.
     render(<ComprasCard customerId="cu1" />, { wrapper });
-    expect(await screen.findByText("1 de 3 usadas")).toBeInTheDocument();
+    expect(await screen.findByText("1 de 3 servicios usado")).toBeInTheDocument();
   });
 
   it("muestra el ahorro contra el precio de lista", async () => {
@@ -151,12 +188,22 @@ describe("ComprasCard", () => {
     expect(await screen.findByText(/ahorra \$29\.000/i)).toBeInTheDocument();
   });
 
-  it("el detalle de las sesiones aparece al desplegar", async () => {
+  it("el detalle de los servicios aparece al desplegar", async () => {
     render(<ComprasCard customerId="cu1" />, { wrapper });
-    await userEvent.click(await screen.findByRole("button", { name: /ver sesiones/i }));
-    expect(await screen.findByText("Consumida")).toBeInTheDocument();
-    expect(screen.getByText("Agendada")).toBeInTheDocument();
-    expect(screen.getByText("Disponible")).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("button", { name: /ver servicios/i }));
+    expect(await screen.findByText("Hecho")).toBeInTheDocument();
+    expect(screen.getByText("Agendado")).toBeInTheDocument();
+    expect(screen.getByText("A agendar")).toBeInTheDocument();
+  });
+
+  it("un combo de 2 servicios muestra los dos nombres con su estado", async () => {
+    compras = [comboPurchase];
+    render(<ComprasCard customerId="cu1" />, { wrapper });
+    await userEvent.click(await screen.findByRole("button", { name: /ver servicios/i }));
+    expect(await screen.findByText("Baby Botox")).toBeInTheDocument();
+    expect(screen.getByText("Depilación facial con hilo")).toBeInTheDocument();
+    expect(screen.getByText("Hecho")).toBeInTheDocument();
+    expect(screen.getByText("A agendar")).toBeInTheDocument();
   });
 
   it("sin compras, lo dice y no muestra una tabla vacía", async () => {
@@ -234,14 +281,16 @@ describe("ComprasCard", () => {
         usadas: 1,
         agendadas: 0,
         disponibles: 2,
-        sessions: [
-          { id: "s1", sessionNumber: 1, appointmentId: "a1", appointmentStart: "2026-09-01T13:00:00.000Z", consumedAt: null, estado: "perdida" },
+        servicios: [
+          { id: "s1", serviceId: "svc-full", serviceName: "Cuerpo Full", repeticion: 1, orden: 1, appointmentId: "a1", appointmentStart: "2026-09-01T13:00:00.000Z", consumedAt: null, estado: "perdida" },
+          { id: "s2", serviceId: "svc-full", serviceName: "Cuerpo Full", repeticion: 2, orden: 1, appointmentId: null, appointmentStart: null, consumedAt: null, estado: "disponible" },
+          { id: "s3", serviceId: "svc-full", serviceName: "Cuerpo Full", repeticion: 3, orden: 1, appointmentId: null, appointmentStart: null, consumedAt: null, estado: "disponible" },
         ],
       },
     ];
     render(<ComprasCard customerId="cu1" />, { wrapper });
     expect(await screen.findByText(/1 perdida por no venir/i)).toBeInTheDocument();
-    expect(screen.getByText("1 de 3 usadas")).toBeInTheDocument();
+    expect(screen.getByText("1 de 3 servicios usado")).toBeInTheDocument();
   });
 
   it("una compra activa no ofrece devolver la plata", async () => {

@@ -7,7 +7,13 @@ import {
   progresoDeSesiones,
   puedeAgendar,
 } from "./compras-ui";
-import type { Compra } from "../api/compras";
+import type { Compra, ServicioComprado } from "../api/compras";
+
+const svcBase: ServicioComprado = {
+  id: "sv1", serviceId: "s1", serviceName: "Baby Botox",
+  repeticion: 1, orden: 1, appointmentId: null, appointmentStart: null,
+  consumedAt: null, estado: "disponible" as const,
+};
 
 const base: Compra = {
   id: "cp1",
@@ -37,7 +43,7 @@ const base: Compra = {
   pagado: 0,
   saldo: 166000,
   saldada: false,
-  sessions: [],
+  servicios: [],
 };
 
 describe("pesos", () => {
@@ -85,43 +91,47 @@ describe("estadoDeCompra", () => {
 });
 
 describe("progresoDeSesiones", () => {
-  it("cuenta usadas sobre el total", () => {
-    const c = { ...base, consumidas: 1, usadas: 1, agendadas: 1, disponibles: 1 };
-    expect(progresoDeSesiones(c).texto).toBe("1 de 3 usadas");
+  it("parte la barra: lo hecho por un lado y lo perdido por el otro", () => {
+    // 3 servicios: 1 hecho, 1 perdido, 1 a agendar.
+    const p = progresoDeSesiones({
+      ...base, consumidas: 1, perdidas: 1, usadas: 2, servicios: [
+        { ...svcBase, id: "a" }, { ...svcBase, id: "b" }, { ...svcBase, id: "c" },
+      ],
+    });
+    expect(p.texto).toBe("2 de 3 servicios usados");
+    expect(p.porcentajeHecho).toBe(33);
+    expect(p.porcentajePerdido).toBe(33);
   });
 
-  it("una sesión perdida cuenta como usada", () => {
-    // La clienta no vino: no la puede reagendar, así que para ella está usada.
-    const c = { ...base, consumidas: 1, perdidas: 1, usadas: 2, disponibles: 1 };
-    expect(progresoDeSesiones(c).texto).toBe("2 de 3 usadas");
+  it("sin perdidos, el tramo rojo es cero y la barra queda de un solo color", () => {
+    const p = progresoDeSesiones({
+      ...base, consumidas: 2, perdidas: 0, usadas: 2, servicios: [
+        { ...svcBase, id: "a" }, { ...svcBase, id: "b" },
+      ],
+    });
+    expect(p.porcentajeHecho).toBe(100);
+    expect(p.porcentajePerdido).toBe(0);
   });
 
-  it("el porcentaje es el de las usadas", () => {
-    // Agendada no es usada: el turno puede cancelarse y la sesión vuelve.
-    const c = { ...base, consumidas: 1, usadas: 1, agendadas: 2, disponibles: 0 };
-    expect(progresoDeSesiones(c).porcentaje).toBe(33);
-  });
-
-  it("sin sesiones no divide por cero", () => {
-    expect(progresoDeSesiones({ ...base, sessionsTotal: 0 }).porcentaje).toBe(0);
-  });
-
-  it("todo consumido es 100", () => {
-    expect(progresoDeSesiones({ ...base, consumidas: 3, usadas: 3, disponibles: 0 }).porcentaje).toBe(100);
+  it("una compra sin servicios no divide por cero", () => {
+    const p = progresoDeSesiones({ ...base, consumidas: 0, perdidas: 0, usadas: 0, servicios: [] });
+    expect(p.porcentajeHecho).toBe(0);
+    expect(p.porcentajePerdido).toBe(0);
   });
 });
 
 describe("etiquetaDeSesion", () => {
-  it("traduce los cinco estados", () => {
-    expect(etiquetaDeSesion("consumida").texto).toBe("Consumida");
-    expect(etiquetaDeSesion("perdida").texto).toMatch(/no vino/i);
-    expect(etiquetaDeSesion("agendada").texto).toBe("Agendada");
-    expect(etiquetaDeSesion("disponible").texto).toBe("Disponible");
-    expect(etiquetaDeSesion("vencida").texto).toBe("Vencida");
+  it("traduce los cinco estados al vocabulario de la ficha", () => {
+    expect(etiquetaDeSesion("consumida").texto).toBe("Hecho");
+    expect(etiquetaDeSesion("perdida").texto).toBe("Perdido");
+    expect(etiquetaDeSesion("agendada").texto).toBe("Agendado");
+    expect(etiquetaDeSesion("disponible").texto).toBe("A agendar");
+    expect(etiquetaDeSesion("vencida").texto).toBe("Vencido");
   });
 
-  it("las clases van escritas enteras", () => {
-    expect(etiquetaDeSesion("consumida").clase).toMatch(/^bg-\S+ text-\S+$/);
+  it("hecho en verde y perdido en rojo, que es lo que los distingue de un vistazo", () => {
+    expect(etiquetaDeSesion("consumida").clase).toMatch(/emerald/);
+    expect(etiquetaDeSesion("perdida").clase).toMatch(/rose/);
   });
 });
 

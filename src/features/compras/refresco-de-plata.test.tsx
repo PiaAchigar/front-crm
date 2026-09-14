@@ -47,7 +47,7 @@ const pack: Compra = {
   pagado: 166000,
   saldo: 0,
   saldada: true,
-  sessions: [],
+  servicios: [],
 } as unknown as Compra;
 
 let saldoPedido = 0;

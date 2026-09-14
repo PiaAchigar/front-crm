@@ -44,33 +44,50 @@ export function estadoDeCompra(compra: Compra): Etiqueta {
 }
 
 /**
- * Cuántas sesiones se usaron de verdad.
+ * Cuántos servicios se usaron, y la barra partida en dos tramos.
  *
- * **Usadas = consumidas + perdidas.** Una clienta que no vino perdió esa
- * sesión y no la puede reagendar (regla de Laura, 2026-09-09), así que para
- * ella está tan usada como si se la hubiera hecho.
+ * **Usados = hechos + perdidos.** Una clienta que no vino perdió ese servicio
+ * y no lo puede reagendar (regla de Laura, 2026-09-09), así que para ella está
+ * tan usado como si se lo hubiera hecho.
  *
- * **Agendada NO cuenta**: el turno puede cancelarse y la sesión vuelve sola a
- * disponible. Contarla acá haría que la barra retroceda, que es exactamente la
+ * **Pero "usado" junta dos cosas muy distintas**, y la barra era el único lugar
+ * donde se veían iguales — justamente el que se lee sin leer. Por eso devuelve
+ * dos porcentajes: verde lo hecho, rojo lo perdido (pedido de Pia, 2026-09-11).
+ *
+ * **Agendado NO cuenta**: el turno puede cancelarse y el servicio vuelve solo a
+ * *a agendar*. Contarlo acá haría que la barra retroceda, que es exactamente la
  * señal de que se estaba midiendo la cosa equivocada.
+ *
+ * El denominador son los SERVICIOS, no `sessionsTotal`: un combo de 2 servicios
+ * tiene `sessionsTotal` 1 y dos cosas que agendar.
  */
-export function progresoDeSesiones(compra: Compra): { texto: string; porcentaje: number } {
-  const total = compra.sessionsTotal ?? 0;
-  const usadas = compra.usadas ?? compra.consumidas;
+export function progresoDeSesiones(compra: Compra): {
+  texto: string;
+  porcentajeHecho: number;
+  porcentajePerdido: number;
+} {
+  const total = compra.servicios.length;
+  const hechos = compra.consumidas;
+  const perdidos = compra.perdidas;
+  const usados = compra.usadas ?? hechos + perdidos;
+  const pct = (n: number) => (total === 0 ? 0 : Math.round((n / total) * 100));
   return {
-    texto: `${usadas} de ${total} usadas`,
-    porcentaje: total === 0 ? 0 : Math.round((usadas / total) * 100),
+    texto: `${usados} de ${total} servicio${total === 1 ? "" : "s"} usado${usados === 1 ? "" : "s"}`,
+    porcentajeHecho: pct(hechos),
+    porcentajePerdido: pct(perdidos),
   };
 }
 
 const SESIONES: Record<EstadoSesion, Etiqueta> = {
-  consumida: { texto: "Consumida", clase: "bg-emerald-100 text-emerald-800" },
+  // "Hecho" y no "Consumida": lo que se hizo fue el servicio, y así lo dice
+  // Laura en el mostrador.
+  consumida: { texto: "Hecho", clase: "bg-emerald-100 text-emerald-800" },
   // Rojo y no gris: no es un estado neutro, es plata que la clienta perdió y
   // por la que va a preguntar.
-  perdida: { texto: "Perdida (no vino)", clase: "bg-rose-100 text-rose-800" },
-  agendada: { texto: "Agendada", clase: "bg-sky-100 text-sky-800" },
-  disponible: { texto: "Disponible", clase: "bg-surface-high text-ink-soft" },
-  vencida: { texto: "Vencida", clase: "bg-amber-100 text-amber-800" },
+  perdida: { texto: "Perdido", clase: "bg-rose-100 text-rose-800" },
+  agendada: { texto: "Agendado", clase: "bg-sky-100 text-sky-800" },
+  disponible: { texto: "A agendar", clase: "bg-surface-high text-ink-soft" },
+  vencida: { texto: "Vencido", clase: "bg-amber-100 text-amber-800" },
 };
 
 export function etiquetaDeSesion(estado: EstadoSesion): Etiqueta {

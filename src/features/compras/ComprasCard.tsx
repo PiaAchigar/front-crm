@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Compra } from "../../api/compras";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { agruparServicios } from "../../lib/agrupar-servicios";
 import { formatDateTime, formatDateTimeToDate } from "../../lib/format";
 import {
   ahorro,
@@ -164,15 +165,18 @@ function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: stri
         {ahorrado > 0 && <span className="text-emerald-700">Ahorra {pesos(ahorrado)}</span>}
       </div>
 
-      {/* La barra mide lo CONSUMIDO. Una sesión agendada todavía puede
-          cancelarse, y si contara acá la barra retrocedería. */}
-      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-surface-high">
-        <div className="h-full bg-primary" style={{ width: `${progreso.porcentaje}%` }} />
+      {/* La barra mide lo CONSUMIDO, no lo agendado: un turno agendado todavía
+          puede cancelarse, y si contara acá la barra retrocedería.
+          Dos tramos porque "usado" junta dos cosas distintas — vino y se lo
+          hizo (verde) contra no vino y lo perdió (rojo). */}
+      <div className="mt-2 flex h-1.5 w-full overflow-hidden rounded-full bg-surface-high">
+        <div className="h-full bg-emerald-500" style={{ width: `${progreso.porcentajeHecho}%` }} />
+        <div className="h-full bg-rose-500" style={{ width: `${progreso.porcentajePerdido}%` }} />
       </div>
 
       <div className="mt-2 flex gap-3 text-xs">
         <button className="text-primary hover:underline" onClick={() => setAbierta((v) => !v)}>
-          {abierta ? "Ocultar sesiones" : "Ver sesiones"}
+          {abierta ? "Ocultar servicios" : "Ver servicios"}
         </button>
         {!cancelada && (
           <button className="text-ink-soft hover:underline" onClick={() => setConfirmando(true)}>
@@ -198,31 +202,43 @@ function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: stri
       </div>
 
       {abierta && (
-        <table className="mt-2 w-full text-left text-xs">
-          <thead className="text-ink-soft">
-            <tr>
-              <th className="py-1">#</th>
-              <th className="py-1">Estado</th>
-              <th className="py-1">Turno</th>
-            </tr>
-          </thead>
-          <tbody>
-            {compra.sessions.map((s) => {
-              const e = etiquetaDeSesion(s.estado);
-              return (
-                <tr key={s.id} className="border-t border-surface-high">
-                  <td className="py-1">{s.sessionNumber ?? "—"}</td>
-                  <td className="py-1">
-                    <span className={`rounded-full px-2 py-0.5 ${e.clase}`}>{e.texto}</span>
-                  </td>
-                  <td className="py-1">
-                    {s.appointmentStart ? formatDateTime(s.appointmentStart) : "—"}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div className="mt-2 text-xs">
+          {agruparServicios(compra.servicios).map((grupo, i) => (
+            <div key={grupo.titulo ?? i} className="mt-2 first:mt-0">
+              {grupo.titulo && (
+                <p className="mb-1 font-medium text-ink-soft">{grupo.titulo}</p>
+              )}
+              <table className="w-full text-left">
+                <thead className="text-ink-soft">
+                  <tr>
+                    <th className="py-1">Servicio</th>
+                    <th className="py-1">Estado</th>
+                    <th className="py-1">Turno</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {grupo.servicios.map((s) => {
+                    const e = etiquetaDeSesion(s.estado);
+                    return (
+                      <tr key={s.id} className="border-t border-surface-high">
+                        {/* Sin nombre es depilación o una capacitación: no se
+                            desglosan en servicios, y el guión lo dice mejor que
+                            un hueco. */}
+                        <td className="py-1">{s.serviceName ?? "—"}</td>
+                        <td className="py-1">
+                          <span className={`rounded-full px-2 py-0.5 ${e.clase}`}>{e.texto}</span>
+                        </td>
+                        <td className="py-1">
+                          {s.appointmentStart ? formatDateTime(s.appointmentStart) : "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ))}
+        </div>
       )}
 
       </div>
