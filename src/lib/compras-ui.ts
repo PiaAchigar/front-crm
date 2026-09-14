@@ -71,8 +71,12 @@ export function progresoDeSesiones(compra: Compra): {
   const perdidos = compra.perdidas;
   const usados = compra.usadas ?? hechos + perdidos;
   const pct = (n: number) => (total === 0 ? 0 : Math.round((n / total) * 100));
+  // "usado" es participio y modifica a "servicios": las dos terminaciones en
+  // plural concuerdan con TOTAL, no con `usados` — "1 de 3 servicios usados",
+  // nunca "servicios usado" (bug fijado en un test, corregido 2026-09-14).
+  const plural = total === 1 ? "" : "s";
   return {
-    texto: `${usados} de ${total} servicio${total === 1 ? "" : "s"} usado${usados === 1 ? "" : "s"}`,
+    texto: `${usados} de ${total} servicio${plural} usado${plural}`,
     porcentajeHecho: pct(hechos),
     porcentajePerdido: pct(perdidos),
   };

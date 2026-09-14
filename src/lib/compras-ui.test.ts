@@ -118,6 +118,26 @@ describe("progresoDeSesiones", () => {
     expect(p.porcentajeHecho).toBe(0);
     expect(p.porcentajePerdido).toBe(0);
   });
+
+  it("la 's' de \"usados\" concuerda con el TOTAL, no con lo usado", () => {
+    // Bug real (2026-09-14): con la 's' de "usado" atada a `usados` en vez de
+    // a `total`, 1 hecho de 3 daba "1 de 3 servicios usado" — mal, porque
+    // "usados" es participio y modifica a "servicios" (plural), no a la
+    // cantidad usada (que acá es 1, singular).
+    const p = progresoDeSesiones({
+      ...base, consumidas: 1, perdidas: 0, usadas: 1, servicios: [
+        { ...svcBase, id: "a" }, { ...svcBase, id: "b" }, { ...svcBase, id: "c" },
+      ],
+    });
+    expect(p.texto).toBe("1 de 3 servicios usados");
+  });
+
+  it("un solo servicio, ya hecho, va en singular: \"1 de 1 servicio usado\"", () => {
+    const p = progresoDeSesiones({
+      ...base, consumidas: 1, perdidas: 0, usadas: 1, servicios: [{ ...svcBase, id: "a" }],
+    });
+    expect(p.texto).toBe("1 de 1 servicio usado");
+  });
 });
 
 describe("etiquetaDeSesion", () => {

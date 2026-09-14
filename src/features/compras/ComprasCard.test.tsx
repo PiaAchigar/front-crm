@@ -180,7 +180,7 @@ describe("ComprasCard", () => {
     // Un turno se puede cancelar y el servicio vuelve: si contara, la barra
     // retrocedería.
     render(<ComprasCard customerId="cu1" />, { wrapper });
-    expect(await screen.findByText("1 de 3 servicios usado")).toBeInTheDocument();
+    expect(await screen.findByText("1 de 3 servicios usados")).toBeInTheDocument();
   });
 
   it("muestra el ahorro contra el precio de lista", async () => {
@@ -290,7 +290,7 @@ describe("ComprasCard", () => {
     ];
     render(<ComprasCard customerId="cu1" />, { wrapper });
     expect(await screen.findByText(/1 perdida por no venir/i)).toBeInTheDocument();
-    expect(screen.getByText("1 de 3 servicios usado")).toBeInTheDocument();
+    expect(screen.getByText("1 de 3 servicios usados")).toBeInTheDocument();
   });
 
   it("una compra activa no ofrece devolver la plata", async () => {
