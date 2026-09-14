@@ -23,10 +23,10 @@ import { VenderModal } from "./VenderModal";
 /**
  * "Compras del Cliente" — lo que la clienta adquirió y en qué anda.
  *
- * Todo lo que se ve acá es DERIVADO: cuántas sesiones quedan sale del estado de
- * los turnos, y el saldo de los pagos confirmados. No hay ningún número
- * guardado que pueda desincronizarse, así que cancelar un turno devuelve la
- * sesión a disponible sin que esta pantalla tenga que hacer nada.
+ * Todo lo que se ve acá es DERIVADO: cuántos servicios quedan por agendar sale
+ * del estado de los turnos, y el saldo de los pagos confirmados. No hay ningún
+ * número guardado que pueda desincronizarse, así que cancelar un turno devuelve
+ * ese servicio a disponible sin que esta pantalla tenga que hacer nada.
  *
  * Por ahora muestra packs, combos y servicios vendidos por adelantado. El
  * timeline completo —compras sueltas, asistencia, reagendamientos— es V4.
@@ -268,7 +268,7 @@ function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: stri
           title={`¿Cancelar "${compra.description ?? "esta compra"}"?`}
           description="La compra no se borra: queda en la ficha, cancelada."
           points={[
-            "Las sesiones que todavía no se usaron pasan a vencidas y no se pueden agendar.",
+            "Los servicios que todavía no se usaron pasan a vencidos y no se pueden agendar.",
             "Lo ya consumido no se toca: se hizo cuando la compra estaba vigente.",
             "Los pagos y las facturas que tenga siguen existiendo — devolver plata es aparte.",
           ]}
@@ -345,7 +345,7 @@ function EliminarCompraDialog({
       description="Esto es para una venta cargada por error. No va a quedar registro de que existió."
       points={[
         "No tiene pagos, ni facturas, ni sesiones agendadas o consumidas: no se pierde nada.",
-        "Se borra junto con sus sesiones sin usar.",
+        "Se borra junto con sus servicios sin agendar.",
         "Si en cambio la clienta compró de verdad y se dio de baja, cerrá esto y usá 'Cancelar compra': eso deja el registro.",
       ]}
       confirmLabel="Eliminar para siempre"
@@ -414,9 +414,12 @@ function DevolverPlataDialog({
       points={[
         `Sale de la caja del día como un egreso, con el detalle de "${nombre}".`,
         `Le baja el saldo a favor de ${pesos(chequeo.saldoDisponible)} a ${pesos(chequeo.saldoDisponible - chequeo.monto)}.`,
+        // `usadas` son FILAS de servicio comprado, no turnos: un turno puede
+        // consumir varias de una (un combo entero en una visita). Decir
+        // "sesiones" acá contaba mal en voz alta.
         chequeo.usadas > 0
-          ? `Ya descontamos ${chequeo.usadas} sesión(es) que usó: esas se cobraron.`
-          : "No usó ninguna sesión, así que vuelve todo lo que pagó.",
+          ? `Ya descontamos ${chequeo.usadas} servicio(s) que usó: esos se cobraron.`
+          : "No usó ningún servicio, así que vuelve todo lo que pagó.",
       ]}
       confirmLabel={`Devolver ${pesos(chequeo.monto)}`}
       pendingLabel="Devolviendo…"

@@ -1,8 +1,15 @@
 import { apiFetch } from "./client";
 
-/** Los cuatro estados de una sesión. Se DERIVAN en el backend a partir del
- *  turno y de la vigencia de la compra: no hay ninguna columna que los guarde,
- *  así que no pueden quedar desincronizados. */
+/**
+ * Los CINCO estados en que puede estar un servicio comprado. Se DERIVAN en el
+ * backend a partir del turno y de la vigencia de la compra: no hay ninguna
+ * columna que los guarde, así que no pueden quedar desincronizados.
+ *
+ * Sólo los tres primeros son *sesiones* — tienen turno, o sea fecha y hora.
+ * `vencida` y `disponible` son servicios comprados que nunca llegaron a
+ * agendarse: el tipo se llama `EstadoSesion` por herencia y el nombre le queda
+ * chico.
+ */
 export type EstadoSesion = "consumida" | "perdida" | "agendada" | "vencida" | "disponible";
 
 /**
