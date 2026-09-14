@@ -5,9 +5,16 @@ import { apiFetch } from "./client";
  *  así que no pueden quedar desincronizados. */
 export type EstadoSesion = "consumida" | "perdida" | "agendada" | "vencida" | "disponible";
 
-export type SesionDeCompra = {
+/**
+ * Un servicio comprado. Con `appointmentStart` ES una sesión — el vocabulario
+ * que fijó Pia: la sesión es un servicio con fecha y hora.
+ */
+export type ServicioComprado = {
   id: string;
-  sessionNumber: number | null;
+  serviceId: string | null;
+  serviceName: string | null;
+  repeticion: number | null;
+  orden: number | null;
   appointmentId: string | null;
   appointmentStart: string | null;
   consumedAt: string | null;
@@ -50,7 +57,7 @@ export type Compra = {
   pagado: number;
   saldo: number;
   saldada: boolean;
-  sessions: SesionDeCompra[];
+  servicios: ServicioComprado[];
 };
 
 export type OrigenVenta = "combo" | "depilacion" | "servicio" | "capacitacion";
