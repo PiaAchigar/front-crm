@@ -6,6 +6,23 @@ import type { ReactNode } from "react";
 import { ComprasCard } from "./ComprasCard";
 import type { Compra } from "../../api/compras";
 
+/**
+ * Embebido, que es como corre de verdad: dentro del iframe del dashboard.
+ * Suelto no hay a quién pedirle que abra la agenda, y ahí la pastilla no es
+ * un botón — eso lo cubre su propio test.
+ */
+const pedirAgendar = vi.fn();
+const embed = { isEmbedded: true };
+vi.mock("../../lib/embed", () => ({
+  // Getter y no valor fijo: así un test puede correr "suelto" sin otro archivo.
+  get isEmbedded() {
+    return embed.isEmbedded;
+  },
+  DASHBOARD_ORIGIN: "https://dashboard.test",
+  pedirAgendar: (...args: unknown[]) => pedirAgendar(...args),
+  useEmbedToken: () => ({ ready: true, token: "t" }),
+}));
+
 const pack: Compra = {
   id: "cp1",
   customerId: "cu1",
@@ -354,5 +371,41 @@ describe("ComprasCard", () => {
     render(<ComprasCard customerId="cu1" />, { wrapper });
     await userEvent.click(await screen.findByRole("button", { name: /vender/i }));
     expect(await screen.findByRole("heading", { name: /vender a la clienta/i })).toBeInTheDocument();
+  });
+});
+
+describe("ComprasCard — ir a agendar", () => {
+  it('la pastilla "A agendar" pide abrir la agenda con la clienta y el servicio', async () => {
+    const user = userEvent.setup();
+    render(<ComprasCard customerId="cu1" />, { wrapper });
+    await user.click(await screen.findByRole("button", { name: /ver servicios/i }));
+
+    await user.click(screen.getByRole("button", { name: /a agendar/i }));
+
+    expect(pedirAgendar).toHaveBeenCalledWith({ customerId: "cu1", serviceId: "svc-full" });
+  });
+
+  it("suelto, sin el dashboard alrededor, la pastilla no es un botón", async () => {
+    embed.isEmbedded = false;
+    try {
+      const user = userEvent.setup();
+      render(<ComprasCard customerId="cu1" />, { wrapper });
+      await user.click(await screen.findByRole("button", { name: /ver servicios/i }));
+
+      expect(screen.queryByRole("button", { name: /a agendar/i })).not.toBeInTheDocument();
+      // Pero la etiqueta sigue estando: lo que se cae es el salto, no el dato.
+      expect(screen.getByText("A agendar")).toBeInTheDocument();
+    } finally {
+      embed.isEmbedded = true;
+    }
+  });
+
+  it("los servicios que ya pasaron no son botones: no hay nada que agendar", async () => {
+    const user = userEvent.setup();
+    render(<ComprasCard customerId="cu1" />, { wrapper });
+    await user.click(await screen.findByRole("button", { name: /ver servicios/i }));
+
+    expect(screen.queryByRole("button", { name: /^hecho$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^agendado$/i })).not.toBeInTheDocument();
   });
 });

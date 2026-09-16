@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Compra } from "../../api/compras";
+import { isEmbedded, pedirAgendar } from "../../lib/embed";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { agruparServicios } from "../../lib/agrupar-servicios";
 import { formatDateTime, formatDateTimeToDate } from "../../lib/format";
@@ -102,6 +103,9 @@ function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: stri
   const cancelar = useCancelarCompra(customerId);
 
   const estado = estadoDeCompra(compra);
+  // `const` y no la propiedad: así el chequeo estrecha el tipo adentro del
+  // onClick, sin castear.
+  const clienta = compra.customerId;
   const progreso = progresoDeSesiones(compra);
   const ahorrado = ahorro(compra);
   const cancelada = !!compra.cancelledAt;
@@ -226,7 +230,26 @@ function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: stri
                             un hueco. */}
                         <td className="py-1">{s.serviceName ?? "—"}</td>
                         <td className="py-1">
-                          <span className={`rounded-full px-2 py-0.5 ${e.clase}`}>{e.texto}</span>
+                          {/* "A agendar" es la única que lleva a algún lado:
+                              las demás describen algo que ya pasó. Suelto (sin
+                              el dashboard alrededor) tampoco, porque el CRM no
+                              sabe dónde vive la agenda. */}
+                          {s.estado === "disponible" && isEmbedded && clienta ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                pedirAgendar({
+                                  customerId: clienta,
+                                  serviceId: s.serviceId,
+                                })
+                              }
+                              className={`rounded-full px-2 py-0.5 underline-offset-2 hover:underline ${e.clase}`}
+                            >
+                              {e.texto}
+                            </button>
+                          ) : (
+                            <span className={`rounded-full px-2 py-0.5 ${e.clase}`}>{e.texto}</span>
+                          )}
                         </td>
                         <td className="py-1">
                           {s.appointmentStart ? formatDateTime(s.appointmentStart) : "—"}

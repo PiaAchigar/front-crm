@@ -44,3 +44,25 @@ export function useEmbedToken(): { ready: boolean; token: string | null } {
 
   return state;
 }
+
+const AGENDAR_MSG = "piubella:crm:agendar";
+
+/**
+ * Pedirle al dashboard que abra la agenda para agendar este servicio.
+ *
+ * El CRM corre dentro de un `<iframe>`, así que no puede navegar al dashboard
+ * por su cuenta: el navegador se lo impide entre origins distintos. Se lo pide
+ * por el mismo canal `postMessage` del handshake del token.
+ *
+ * **Manda la clienta y el servicio aunque hoy no se usen.** El dashboard, por
+ * ahora, sólo abre la agenda. El paso que sigue —abrir el turno nuevo ya
+ * cargado con estos dos— vive todo del lado del dashboard y la agenda; si el
+ * mensaje no los trajera, sumarlos después obligaría a tocar los tres repos
+ * en vez de uno.
+ *
+ * Fuera del iframe no hace nada: el CRM suelto no sabe dónde vive la agenda.
+ */
+export function pedirAgendar(datos: { customerId: string; serviceId: string | null }): void {
+  if (!isEmbedded) return;
+  window.parent.postMessage({ type: AGENDAR_MSG, ...datos }, DASHBOARD_ORIGIN ?? "*");
+}
