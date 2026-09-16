@@ -9,6 +9,7 @@ import {
   devolverPlata,
   eliminarCompra,
   fetchCatalogoVendible,
+  fetchEstadoDeCobro,
   fetchChequeoDeDevolucion,
   fetchCompras,
   fetchImpactoDeBorrado,
@@ -186,6 +187,22 @@ export function useAplazarVencimiento(customerId: string | null) {
     // El aviso de la pantalla de Clientes se arma de lo mismo: si no se
     // invalida, sigue nombrando a una clienta que ya no tiene nada vencido.
     onSuccess: () => invalidarPlataDe(qc, customerId),
+  });
+}
+
+/**
+ * Lo que falta cobrar de una compra, para abrir el cobro con el número puesto.
+ *
+ * `staleTime: 0` a propósito: entre que se abre la ficha y se aprieta Cobrar,
+ * otra persona pudo haber cobrado parte. Proponer un número viejo haría
+ * cobrar de más, y eso después hay que devolverlo.
+ */
+export function useEstadoDeCobro(compraId: string | null) {
+  return useQuery({
+    queryKey: ["cobro-de-compra", compraId],
+    queryFn: () => fetchEstadoDeCobro(compraId!),
+    enabled: !!compraId,
+    staleTime: 0,
   });
 }
 

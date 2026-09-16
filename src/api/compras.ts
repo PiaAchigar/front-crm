@@ -281,6 +281,17 @@ export type EstadoDeCobro = {
   faltaElMinimo: boolean;
 };
 
+/**
+ * Cuánto falta cobrar de una compra que YA se vendió.
+ *
+ * La cuenta la hace el backend y no la pantalla: el mínimo del primer pago es
+ * el 40% del ACUMULADO (regla 5.10) y espejarlo acá sería una segunda copia
+ * que se desincroniza sola.
+ */
+export function fetchEstadoDeCobro(id: string): Promise<EstadoDeCobro> {
+  return apiFetch(`/api/crm/purchases/${id}/checkout-state`);
+}
+
 export function cobrarCompra(
   id: string,
   input: { amount: number; method: MedioDePago; wantsInvoice: boolean; notes?: string | null },

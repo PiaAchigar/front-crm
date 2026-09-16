@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Compra } from "../../api/compras";
 import { isEmbedded, pedirAgendar } from "../../lib/embed";
+import { CobrarPaso } from "./CobrarPaso";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { agruparServicios } from "../../lib/agrupar-servicios";
 import { formatDateTime, formatDateTimeToDate } from "../../lib/format";
@@ -17,6 +18,7 @@ import {
   useCompras,
   useDevolverPlata,
   useEliminarCompra,
+  useEstadoDeCobro,
   useImpactoDeBorrado,
 } from "./useCompras";
 import { VenderModal } from "./VenderModal";
@@ -98,6 +100,7 @@ export function ComprasCard({
 function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: string }) {
   const [abierta, setAbierta] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
+  const [cobrando, setCobrando] = useState(false);
   const [borrando, setBorrando] = useState(false);
   const [devolviendo, setDevolviendo] = useState(false);
   const cancelar = useCancelarCompra(customerId);
@@ -182,6 +185,15 @@ function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: stri
         <button className="text-primary hover:underline" onClick={() => setAbierta((v) => !v)}>
           {abierta ? "Ocultar servicios" : "Ver servicios"}
         </button>
+        {/* Cobrar lo que falta. Sin esto, una seña tomada al vender dejaba el
+            resto sin forma de entrar al sistema: el cobro sólo existía DENTRO
+            del modal de venta (Pia, 2026-09-16). Una compra cancelada no lo
+            ofrece — el backend la rechaza igual. */}
+        {!cancelada && compra.saldo > 0 && (
+          <button className="text-primary hover:underline" onClick={() => setCobrando(true)}>
+            Cobrar
+          </button>
+        )}
         {!cancelada && (
           <button className="text-ink-soft hover:underline" onClick={() => setConfirmando(true)}>
             Cancelar compra
@@ -283,6 +295,15 @@ function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: stri
             setBorrando(false);
             setConfirmando(true);
           }}
+        />
+      )}
+
+      {cobrando && clienta && (
+        <CobroPendiente
+          compraId={compra.id}
+          customerId={clienta}
+          descripcion={compra.description ?? "esta compra"}
+          onListo={() => setCobrando(false)}
         />
       )}
 
@@ -454,5 +475,59 @@ function DevolverPlataDialog({
       onConfirm={() => devolver.mutate({ id: compra.id }, { onSuccess: onClose })}
       onClose={onClose}
     />
+  );
+}
+
+/**
+ * El cobro de una compra que ya estaba vendida.
+ *
+ * Reutiliza `CobrarPaso`, que es la MISMA pantalla del paso de cobro de la
+ * venta: la validación del mínimo, los medios de pago y el tilde de factura ya
+ * están resueltos ahí, y que sean la misma pantalla es lo que evita que las
+ * dos se desincronicen.
+ *
+ * Lo único que agrega es traer cuánto falta, que en la venta venía de la
+ * cotización recién hecha y acá hay que preguntárselo al backend.
+ */
+function CobroPendiente({
+  compraId,
+  customerId,
+  descripcion,
+  onListo,
+}: {
+  compraId: string;
+  customerId: string;
+  descripcion: string;
+  onListo: () => void;
+}) {
+  const { data, isLoading, error } = useEstadoDeCobro(compraId);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-md rounded-xl bg-surface-low">
+        {isLoading ? (
+          <p className="p-5 text-sm text-ink-soft">Buscando cuánto falta cobrar…</p>
+        ) : error || !data ? (
+          <div className="p-5">
+            <p className="text-sm text-rose-700">No pudimos ver cuánto falta cobrar.</p>
+            <button
+              className="mt-3 rounded-full border border-surface-highest px-4 py-1.5 text-sm"
+              onClick={onListo}
+            >
+              Cerrar
+            </button>
+          </div>
+        ) : (
+          <CobrarPaso
+            compraId={compraId}
+            customerId={customerId}
+            descripcion={descripcion}
+            pendiente={data.pendiente}
+            minimo={data.minimo}
+            onListo={onListo}
+          />
+        )}
+      </div>
+    </div>
   );
 }

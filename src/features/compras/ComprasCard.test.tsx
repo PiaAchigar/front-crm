@@ -108,6 +108,7 @@ let impacto = {
 };
 let borrados: string[] = [];
 let devoluciones: string[] = [];
+let cobros: { amount: number; method: string; wantsInvoice: boolean }[] = [];
 let chequeo = {
   cancelada: true,
   pagado: 166000,
@@ -131,6 +132,7 @@ beforeEach(() => {
   compras = [pack];
   borrados = [];
   devoluciones = [];
+  cobros = [];
   chequeo = {
     cancelada: true,
     pagado: 166000,
@@ -158,6 +160,21 @@ beforeEach(() => {
       const u = String(url);
       if (u.includes("/purchases/catalog")) {
         return { ok: true, status: 200, json: async () => ({ combos: [], depilacion: [], servicios: [], promociones: [] }) };
+      }
+      if (u.includes("/checkout-state")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pendiente: 66000, minimo: 0, sugerido: 66000, faltaElMinimo: false }),
+        };
+      }
+      if (u.endsWith("/checkout")) {
+        cobros.push(JSON.parse(String(init?.body ?? "{}")));
+        return {
+          ok: true,
+          status: 201,
+          json: async () => ({ pendiente: 0, minimo: 0, sugerido: 0, faltaElMinimo: false }),
+        };
       }
       if (u.includes("/delete-impact")) {
         return { ok: true, status: 200, json: async () => impacto };
@@ -407,5 +424,41 @@ describe("ComprasCard — ir a agendar", () => {
 
     expect(screen.queryByRole("button", { name: /^hecho$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^agendado$/i })).not.toBeInTheDocument();
+  });
+});
+
+describe("ComprasCard — cobrar lo que falta", () => {
+  it("una compra que debe plata ofrece cobrarla", async () => {
+    // Antes esto no existía: si Laura tomaba una seña al vender, la plata que
+    // faltaba no tenía por dónde entrar (Pia, 2026-09-16).
+    render(<ComprasCard customerId="cu1" />, { wrapper });
+    expect(await screen.findByRole("button", { name: /^cobrar$/i })).toBeInTheDocument();
+  });
+
+  it("una compra paga no lo ofrece", async () => {
+    compras = [{ ...pack, pagado: 166000, saldo: 0, saldada: true }];
+    render(<ComprasCard customerId="cu1" />, { wrapper });
+    await screen.findByText("Cuerpo Full — pack de 3");
+    expect(screen.queryByRole("button", { name: /^cobrar$/i })).not.toBeInTheDocument();
+  });
+
+  it("una cancelada tampoco: el backend la rechaza igual", async () => {
+    compras = [{ ...pack, cancelledAt: "2026-09-09T10:00:00.000Z" }];
+    render(<ComprasCard customerId="cu1" />, { wrapper });
+    await screen.findByText("Cuerpo Full — pack de 3");
+    expect(screen.queryByRole("button", { name: /^cobrar$/i })).not.toBeInTheDocument();
+  });
+
+  it("cobra el monto y el medio que se eligieron", async () => {
+    const user = userEvent.setup();
+    render(<ComprasCard customerId="cu1" />, { wrapper });
+    await user.click(await screen.findByRole("button", { name: /^cobrar$/i }));
+
+    // Propone lo que falta, que es lo más común en el mostrador.
+    await screen.findByRole("heading", { name: /^cobrar$/i });
+    await user.click(screen.getByRole("button", { name: /cobrar \$66\.000/i }));
+
+    await waitFor(() => expect(cobros).toHaveLength(1));
+    expect(cobros[0]).toMatchObject({ amount: 66000, method: "cash", wantsInvoice: false });
   });
 });
