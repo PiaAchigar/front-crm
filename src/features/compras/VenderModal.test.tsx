@@ -5,12 +5,29 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import { VenderModal } from "./VenderModal";
 
-const PROMOS_BASE = [{ id: "p1", name: "Primavera", discountPercentage: 10, discountAmount: null }];
+const PROMOS_BASE = [
+  {
+    id: "p1",
+    name: "Primavera",
+    discountPercentage: 10,
+    discountAmount: null,
+    // Aplica al Combo Facial Premium (c1) y a Cuerpo Full (d1): son los dos
+    // ítems que el resto de los tests de este archivo usan para probar la
+    // promo. NO aplica a Combo Express (cx1): ese es el que prueba el filtro.
+    destinos: [
+      { tipo: "combo", id: "c1" },
+      { tipo: "depilacion", id: "d1" },
+    ],
+  },
+];
+
+const COMBOS_BASE = [
+  { origen: "combo", id: "c1", nombre: "Combo Facial Premium", packSesiones: null, packDescuentoPct: null, precioDesde: 51000 },
+  { origen: "combo", id: "cx1", nombre: "Combo Express", packSesiones: null, packDescuentoPct: null, precioDesde: 35000 },
+];
 
 const catalogo: any = {
-  combos: [
-    { origen: "combo", id: "c1", nombre: "Combo Facial Premium", packSesiones: null, packDescuentoPct: null, precioDesde: 51000 },
-  ],
+  combos: [...COMBOS_BASE],
   depilacion: [
     { origen: "depilacion", id: "d1", nombre: "Cuerpo Full", packSesiones: 3, packDescuentoPct: 15, precioDesde: 65000 },
   ],
@@ -54,9 +71,7 @@ beforeEach(() => {
   cuerposDePost = [];
   cobros = [];
   catalogo.promociones = [...PROMOS_BASE];
-  catalogo.combos = [
-    { origen: "combo", id: "c1", nombre: "Combo Facial Premium", packSesiones: null, packDescuentoPct: null, precioDesde: 51000 },
-  ];
+  catalogo.combos = [...COMBOS_BASE];
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
@@ -239,6 +254,36 @@ describe("VenderModal", () => {
     await userEvent.selectOptions(screen.getByLabelText(/promo/i), "p1");
     // "Con la promo" y el total.
     await waitFor(() => expect(screen.getAllByText("$149.400")).toHaveLength(2));
+  });
+
+  async function irACombosYElegir(nombre: RegExp) {
+    await userEvent.click(await screen.findByRole("tab", { name: /^combos$/i }));
+    await userEvent.click(await screen.findByRole("button", { name: nombre }));
+  }
+
+  it("ofrece la promo del combo elegido", async () => {
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await irACombosYElegir(/combo facial premium/i);
+    expect(await screen.findByRole("option", { name: /primavera/i })).toBeInTheDocument();
+  });
+
+  it("NO ofrece esa promo con otro combo", async () => {
+    // El bug que esto arregla: hoy el desplegable lista TODAS las promos y se
+    // le puede aplicar a un Baby Botox una promo pensada para depilación.
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await irACombosYElegir(/combo express/i);
+    await screen.findByLabelText(/sesiones/i);
+    expect(screen.queryByRole("option", { name: /primavera/i })).not.toBeInTheDocument();
+  });
+
+  it("al cambiar de item, deselecciona una promo que dejó de aplicar", async () => {
+    // Si queda seleccionada, se vende con un descuento que el backend
+    // rechaza y Laura no entiende por qué.
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await irACombosYElegir(/combo facial premium/i);
+    await userEvent.selectOptions(await screen.findByLabelText(/promo/i), "p1");
+    await userEvent.click(await screen.findByRole("button", { name: /combo express/i }));
+    expect(screen.queryByLabelText(/promo/i)).not.toBeInTheDocument();
   });
 
   it("vende con los montos que se vieron en pantalla", async () => {

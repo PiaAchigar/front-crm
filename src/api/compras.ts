@@ -87,6 +87,9 @@ export type PromoVendible = {
   name: string | null;
   discountPercentage: number | null;
   discountAmount: number | null;
+  /** A qué le sirve esta promo. El desplegable de Vender filtra por esto:
+   *  antes se ofrecían todas, sin importar lo elegido. */
+  destinos: { tipo: "servicio" | "combo" | "depilacion"; id: string }[];
 };
 
 export type Catalogo = {

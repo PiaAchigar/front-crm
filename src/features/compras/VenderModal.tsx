@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ItemDeCatalogo, OrigenVenta } from "../../api/compras";
 import { pesos, saldoQueEntra } from "../../lib/compras-ui";
+import { promosQueAplican } from "../../lib/promo-aplica";
 import { useCatalogoVendible, useCotizacion, useVender } from "./useCompras";
 import { CobrarPaso } from "./CobrarPaso";
 
@@ -76,6 +77,21 @@ export function VenderModal({
     const q = busqueda.trim().toLowerCase();
     return q ? items.filter((i) => i.nombre.toLowerCase().includes(q)) : items;
   }, [catalogo, solapa, busqueda]);
+
+  // Sólo las promos que sirven para lo elegido. Antes se listaban todas y se
+  // le podía aplicar a un Baby Botox una promo pensada para depilación.
+  const promosDisponibles = useMemo(
+    () => promosQueAplican(catalogo?.promociones ?? [], elegido),
+    [catalogo, elegido],
+  );
+
+  // Si la promo elegida dejó de aplicar al cambiar de item, se suelta sola:
+  // dejarla puesta vende con un descuento que el backend rechaza.
+  useEffect(() => {
+    if (promotionId && !promosDisponibles.some((p) => p.id === promotionId)) {
+      setPromotionId(null);
+    }
+  }, [promosDisponibles, promotionId]);
 
   function elegir(item: ItemDeCatalogo) {
     setElegido(item);
@@ -269,7 +285,7 @@ export function VenderModal({
                 {/* Sólo si hay promos vigentes. Un desplegable con una única
                     opción que dice "Sin promo" no informa nada y hace dudar de
                     para qué está. */}
-                {!!catalogo?.promociones.length && (
+                {promosDisponibles.length > 0 && (
                   <label className="block text-sm">
                     <span className="text-ink-soft">Promo</span>
                     <select
@@ -278,7 +294,7 @@ export function VenderModal({
                       onChange={(e) => setPromotionId(e.target.value || null)}
                     >
                       <option value="">Sin promo</option>
-                      {catalogo.promociones.map((p) => (
+                      {promosDisponibles.map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.name ?? "Sin nombre"}
                         </option>
