@@ -71,7 +71,7 @@ export function ContactDetailPage() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <Link to="/contactos" className="text-xs text-primary hover:underline">← Clientes</Link>
-          <h1 className="mt-1 text-2xl font-semibold text-primary">{contact.name}</h1>
+          <h1 className="mt-1 text-2xl font-semibold text-primary">Ficha de Cliente: {contact.name}</h1>
           {contact.isArchived && (
             <div className="mt-1 flex items-center gap-2 text-sm text-ink-soft">
               <span className="rounded-full bg-surface-high px-2 py-0.5">Archivado</span>
