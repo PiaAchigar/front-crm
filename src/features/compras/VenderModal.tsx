@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import type { ItemDeCatalogo, OrigenVenta } from "../../api/compras";
+import type { ItemDeCatalogo, OrigenVenta, PromoVendible } from "../../api/compras";
 import { pesos, saldoQueEntra } from "../../lib/compras-ui";
 import { promosQueAplican } from "../../lib/promo-aplica";
+import { desgloseDePromo, esPaquete } from "../../lib/promos-para-vender";
 import { useCatalogoVendible, useCotizacion, useVender } from "./useCompras";
 import { CobrarPaso } from "./CobrarPaso";
 
@@ -14,11 +15,12 @@ import { CobrarPaso } from "./CobrarPaso";
  * que el navegador rehaga con un catálogo que puede estar viejo.
  */
 
-const SOLAPAS: { clave: keyof Catalogo3; titulo: string }[] = [
+const SOLAPAS: { clave: SolapaClave; titulo: string }[] = [
   { clave: "depilacion", titulo: "Packs de depilación" },
   { clave: "combos", titulo: "Combos" },
   { clave: "servicios", titulo: "Servicios" },
   { clave: "capacitaciones", titulo: "Capacitaciones" },
+  { clave: "promos", titulo: "Promos" },
 ];
 
 type Catalogo3 = {
@@ -27,6 +29,10 @@ type Catalogo3 = {
   servicios: ItemDeCatalogo[];
   capacitaciones: ItemDeCatalogo[];
 };
+
+// "promos" no sale de `catalogo[solapa]` como las otras cuatro: la lista de
+// esa solapa es `catalogo.promociones`, con su propio renderizado.
+type SolapaClave = keyof Catalogo3 | "promos";
 
 export function VenderModal({
   customerId,
@@ -41,11 +47,17 @@ export function VenderModal({
   const { data: catalogo, isLoading } = useCatalogoVendible(true);
   const vender = useVender(customerId);
 
-  const [solapa, setSolapa] = useState<keyof Catalogo3>("depilacion");
+  const [solapa, setSolapa] = useState<SolapaClave>("depilacion");
   const [busqueda, setBusqueda] = useState("");
   const [elegido, setElegido] = useState<ItemDeCatalogo | null>(null);
   const [sesiones, setSesiones] = useState(1);
   const [promotionId, setPromotionId] = useState<string | null>(null);
+  // Un paquete se vende entero, de un saque: no convive con un item suelto
+  // elegido. Los dos puestos a la vez es un estado imposible.
+  const [paqueteElegido, setPaqueteElegido] = useState<PromoVendible | null>(null);
+  // Qué promo de descuento está desplegada en la solapa Promos, para mostrar
+  // sus items.
+  const [promoDesplegada, setPromoDesplegada] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [usarSaldo, setUsarSaldo] = useState(false);
   // Una vez vendido, el modal NO cierra: pasa a cobrar. La venta ya está
@@ -58,10 +70,10 @@ export function VenderModal({
   } | null>(null);
 
   const cotizacion = useCotizacion({
-    origen: (elegido?.origen ?? null) as OrigenVenta | null,
+    origen: paqueteElegido ? "paquete" : ((elegido?.origen ?? null) as OrigenVenta | null),
     id: elegido?.id ?? null,
     sessions: sesiones,
-    promotionId,
+    promotionId: paqueteElegido ? paqueteElegido.id : promotionId,
   });
 
   useEffect(() => {
@@ -73,10 +85,31 @@ export function VenderModal({
   }, [onClose, vender.isPending]);
 
   const lista = useMemo(() => {
+    // La solapa Promos no lista `catalogo.promociones` acá: se renderiza
+    // aparte, porque un paquete y un descuento se tocan distinto.
+    if (solapa === "promos") return [];
     const items = catalogo?.[solapa] ?? [];
     const q = busqueda.trim().toLowerCase();
     return q ? items.filter((i) => i.nombre.toLowerCase().includes(q)) : items;
   }, [catalogo, solapa, busqueda]);
+
+  // Todo lo vendible, indexado por id, para resolver a qué item apunta cada
+  // destino de una promo de descuento (la solapa Promos no vuelve a pedirle
+  // nada al backend: usa el catálogo que el modal ya tiene cargado).
+  const itemsPorId = useMemo(() => {
+    const m = new Map<string, ItemDeCatalogo>();
+    if (catalogo) {
+      for (const l of [
+        catalogo.servicios ?? [],
+        catalogo.combos ?? [],
+        catalogo.depilacion ?? [],
+        catalogo.capacitaciones ?? [],
+      ]) {
+        for (const it of l) m.set(it.id, it);
+      }
+    }
+    return m;
+  }, [catalogo]);
 
   // Sólo las promos que sirven para lo elegido. Antes se listaban todas y se
   // le podía aplicar a un Baby Botox una promo pensada para depilación.
@@ -94,10 +127,27 @@ export function VenderModal({
   }, [promosDisponibles, promotionId]);
 
   function elegir(item: ItemDeCatalogo) {
+    // Elegir un item suelto suelta el paquete elegido: los dos puestos a la
+    // vez es un estado imposible que termina en una venta mal armada.
+    setPaqueteElegido(null);
     setElegido(item);
     // Las del pack por defecto: es la venta que tiene descuento, y ofrecer
     // otro número sería ofrecer un precio peor sin explicar por qué.
     setSesiones(item.packSesiones ?? 1);
+  }
+
+  // Paquete: una sola fila, se toca y queda elegida entera. Se vende de un
+  // saque, sin sesiones a elegir.
+  function elegirPaquete(promo: PromoVendible) {
+    setElegido(null);
+    setPaqueteElegido(promo);
+  }
+
+  // Descuento: se despliega, se toca UN item de adentro y queda elegido ESE,
+  // con la promo ya puesta — el camino de hoy, ahora encontrable desde acá.
+  function elegirItemDePromo(promo: PromoVendible, item: ItemDeCatalogo) {
+    elegir(item);
+    setPromotionId(promo.id);
   }
 
   const q = cotizacion.data;
@@ -215,6 +265,76 @@ export function VenderModal({
             <div className="min-h-0 flex-1 overflow-y-auto">
               {isLoading ? (
                 <p className="text-sm text-ink-soft">Cargando el catálogo…</p>
+              ) : solapa === "promos" ? (
+                (catalogo?.promociones.length ?? 0) === 0 ? (
+                  <p className="text-sm text-ink-soft">Todavía no hay ninguna promo cargada.</p>
+                ) : (
+                  <ul className="flex flex-col gap-1">
+                    {catalogo!.promociones.map((promo) =>
+                      esPaquete(promo) ? (
+                        // Paquete: una fila con nombre, precio y el desglose de lo
+                        // que lleva. Se toca y queda elegida entera.
+                        <li key={promo.id}>
+                          <button
+                            className={
+                              paqueteElegido?.id === promo.id
+                                ? "flex w-full flex-col gap-1 rounded border border-primary bg-surface-high px-3 py-2 text-left text-sm"
+                                : "flex w-full flex-col gap-1 rounded border border-transparent px-3 py-2 text-left text-sm hover:bg-surface-high"
+                            }
+                            onClick={() => elegirPaquete(promo)}
+                          >
+                            <span className="flex items-center justify-between gap-3">
+                              <span className="text-ink">{promo.name ?? "Sin nombre"}</span>
+                              <span className="shrink-0 text-xs text-ink-soft">
+                                {pesos(promo.precioDelPaquete ?? 0)}
+                              </span>
+                            </span>
+                            <ul className="pl-3 text-xs text-ink-soft">
+                              {desgloseDePromo(promo.destinos, catalogo!).map((fila, i) => (
+                                <li key={i}>
+                                  {fila.cantidad} × {fila.nombre}
+                                </li>
+                              ))}
+                            </ul>
+                          </button>
+                        </li>
+                      ) : (
+                        // Descuento: se despliega y muestra sus items. Se toca UN
+                        // item y queda elegido ESE, con la promo ya puesta — el
+                        // comportamiento de hoy, ahora encontrable desde acá.
+                        <li key={promo.id}>
+                          <button
+                            className="flex w-full items-center justify-between gap-3 rounded border border-transparent px-3 py-2 text-left text-sm hover:bg-surface-high"
+                            onClick={() =>
+                              setPromoDesplegada(promoDesplegada === promo.id ? null : promo.id)
+                            }
+                          >
+                            <span className="text-ink">{promo.name ?? "Sin nombre"}</span>
+                          </button>
+                          {promoDesplegada === promo.id && (
+                            <ul className="pl-3">
+                              {desgloseDePromo(promo.destinos, catalogo!).map((fila, i) => {
+                                const destino = promo.destinos[i];
+                                const item = destino ? itemsPorId.get(destino.id) : undefined;
+                                return (
+                                  <li key={i}>
+                                    <button
+                                      className="w-full rounded px-2 py-1 text-left text-xs text-ink hover:bg-surface-high"
+                                      disabled={!item}
+                                      onClick={() => item && elegirItemDePromo(promo, item)}
+                                    >
+                                      {fila.nombre}
+                                    </button>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          )}
+                        </li>
+                      ),
+                    )}
+                  </ul>
+                )
               ) : lista.length === 0 ? (
                 // Se distingue "no hay ninguno cargado" de "el buscador no
                 // encontró": son dos problemas con soluciones distintas.
@@ -249,35 +369,41 @@ export function VenderModal({
 
           {/* Cuánto sale */}
           <div className="flex min-h-0 flex-col gap-3 overflow-y-auto p-4">
-            {!elegido ? (
+            {!elegido && !paqueteElegido ? (
               <p className="text-sm text-ink-soft">Elegí qué le vas a vender.</p>
             ) : (
               <>
-                <p className="text-sm font-medium text-ink">{elegido.nombre}</p>
+                <p className="text-sm font-medium text-ink">
+                  {elegido ? elegido.nombre : paqueteElegido!.name}
+                </p>
 
-                <label className="block text-sm">
-                  <span className="text-ink-soft">Sesiones</span>
-                  <input
-                    type="number"
-                    min={1}
-                    className="mt-1 w-full rounded border border-surface-highest bg-surface-low px-3 py-2 text-sm"
-                    value={sesiones}
-                    // Un combo YA es el paquete, y una capacitación se vende
-                    // entera: el precio de catálogo es el del curso completo.
-                    disabled={elegido.origen === "combo" || elegido.origen === "capacitacion"}
-                    onChange={(e) => setSesiones(Math.max(1, Number(e.target.value) || 1))}
-                  />
-                </label>
+                {/* Un paquete es SIEMPRE una sola compra: no hay sesiones que
+                    elegir. */}
+                {!paqueteElegido && (
+                  <label className="block text-sm">
+                    <span className="text-ink-soft">Sesiones</span>
+                    <input
+                      type="number"
+                      min={1}
+                      className="mt-1 w-full rounded border border-surface-highest bg-surface-low px-3 py-2 text-sm"
+                      value={sesiones}
+                      // Un combo YA es el paquete, y una capacitación se vende
+                      // entera: el precio de catálogo es el del curso completo.
+                      disabled={elegido?.origen === "combo" || elegido?.origen === "capacitacion"}
+                      onChange={(e) => setSesiones(Math.max(1, Number(e.target.value) || 1))}
+                    />
+                  </label>
+                )}
 
                 {conDescuentoDePack && (
                   <p className="rounded bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-                    Pack de {elegido.packSesiones}
-                    {elegido.packDescuentoPct ? ` — ${elegido.packDescuentoPct}% de descuento` : ""}.
+                    Pack de {elegido?.packSesiones}
+                    {elegido?.packDescuentoPct ? ` — ${elegido.packDescuentoPct}% de descuento` : ""}.
                   </p>
                 )}
                 {avisaFaltaDePack && (
                   <p className="rounded bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                    El pack es de {elegido.packSesiones} sesiones. Con {sesiones} se venden al
+                    El pack es de {elegido?.packSesiones} sesiones. Con {sesiones} se venden al
                     precio de lista, sin descuento.
                   </p>
                 )}

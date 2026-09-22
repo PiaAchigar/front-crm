@@ -87,9 +87,14 @@ export type PromoVendible = {
   name: string | null;
   discountPercentage: number | null;
   discountAmount: number | null;
+  /** `"paquete"` se vende entera de un saque; cualquier otro valor (o null)
+   *  es un descuento sobre una cosa elegida. */
+  promotionType: string | null;
+  /** El precio del paquete completo. Sólo cuando `promotionType === "paquete"`. */
+  precioDelPaquete: number | null;
   /** A qué le sirve esta promo. El desplegable de Vender filtra por esto:
    *  antes se ofrecían todas, sin importar lo elegido. */
-  destinos: { tipo: "servicio" | "combo" | "depilacion"; id: string }[];
+  destinos: { tipo: "servicio" | "combo" | "depilacion"; id: string; cantidad: number }[];
 };
 
 export type Catalogo = {
@@ -114,6 +119,9 @@ export type Cotizacion = {
   depilationComboId: string | null;
   serviceId: string | null;
   trainingId: string | null;
+  /** Sólo viene en `true` cuando se cotizó un paquete: los cuatro orígenes de
+   *  arriba llegan en `null` y no hay que rearmar nada para vender. */
+  esPaquete?: boolean;
 };
 
 export function fetchCompras(customerId: string): Promise<Compra[]> {
@@ -124,12 +132,12 @@ export function fetchCatalogoVendible(): Promise<Catalogo> {
   return apiFetch("/api/crm/purchases/catalog");
 }
 
-export function cotizarVenta(input: {
-  origen: OrigenVenta;
-  id: string;
-  sessions: number;
-  promotionId?: string | null;
-}): Promise<Cotizacion> {
+export function cotizarVenta(
+  input:
+    | { origen: OrigenVenta; id: string; sessions: number; promotionId?: string | null }
+    // Un paquete no tiene "origen" suelto: lo que lleva sale de la promo.
+    | { origen: "paquete"; promotionId: string },
+): Promise<Cotizacion> {
   return apiFetch("/api/crm/purchases/quote", {
     method: "POST",
     body: JSON.stringify(input),

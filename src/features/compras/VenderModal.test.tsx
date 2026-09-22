@@ -9,15 +9,39 @@ const PROMOS_BASE = [
   {
     id: "p1",
     name: "Primavera",
+    promotionType: "percentage",
+    precioDelPaquete: null,
     discountPercentage: 10,
     discountAmount: null,
     // Aplica al Combo Facial Premium (c1) y a Cuerpo Full (d1): son los dos
     // ítems que el resto de los tests de este archivo usan para probar la
     // promo. NO aplica a Combo Express (cx1): ese es el que prueba el filtro.
     destinos: [
-      { tipo: "combo", id: "c1" },
-      { tipo: "depilacion", id: "d1" },
+      { tipo: "combo", id: "c1", cantidad: 1 },
+      { tipo: "depilacion", id: "d1", cantidad: 1 },
     ],
+  },
+  {
+    id: "pk1",
+    name: "Promo Novia",
+    promotionType: "paquete",
+    precioDelPaquete: 250000,
+    discountPercentage: null,
+    discountAmount: null,
+    // Lleva la Limpieza de cutis (s-limpieza), por 3.
+    destinos: [{ tipo: "servicio", id: "s-limpieza", cantidad: 3 }],
+  },
+  {
+    id: "pd1",
+    name: "Promo Baby Botox",
+    promotionType: "percentage",
+    precioDelPaquete: null,
+    discountPercentage: 15,
+    discountAmount: null,
+    // Destino con un nombre bien distinto del de la promo: si coincidieran
+    // ("Baby Botox" adentro de "Promo Baby Botox") el buscador de texto del
+    // test encontraría dos elementos y no podría elegir cuál mirar.
+    destinos: [{ tipo: "servicio", id: "s1", cantidad: 1 }],
   },
 ];
 
@@ -36,6 +60,7 @@ const catalogo: any = {
   ],
   servicios: [
     { origen: "servicio", id: "s1", nombre: "Venus Legacy 1 zona", packSesiones: 3, packDescuentoPct: 15, precioDesde: 10000 },
+    { origen: "servicio", id: "s-limpieza", nombre: "Limpieza de cutis", packSesiones: null, packDescuentoPct: null, precioDesde: 45000 },
   ],
   promociones: [...PROMOS_BASE],
 };
@@ -444,5 +469,37 @@ describe("VenderModal — el catálogo al reabrir", () => {
     });
     await userEvent.click(await screen.findByRole("tab", { name: /^combos$/i }));
     expect(await screen.findByRole("button", { name: /combo1 - prueba/i })).toBeInTheDocument();
+  });
+});
+
+describe("VenderModal — la solapa Promos", () => {
+  it("hay una quinta solapa Promos", async () => {
+    // Es el pedido que originó todo esto: Laura fue a buscar "promo" en el
+    // buscador de items, no encontró nada, y no tenía forma de saber que la
+    // promo existía.
+    render(<VenderModal customerId="c1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    expect(await screen.findByRole("tab", { name: /promos/i })).toBeInTheDocument();
+  });
+
+  it("un paquete se lista con su precio y con lo que lleva adentro", async () => {
+    render(<VenderModal customerId="c1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await userEvent.click(await screen.findByRole("tab", { name: /promos/i }));
+    expect(await screen.findByText(/promo novia/i)).toBeInTheDocument();
+    expect(screen.getByText(/limpieza de cutis/i)).toBeInTheDocument();
+  });
+
+  it("elegir un paquete lo deja listo para vender de un saque", async () => {
+    render(<VenderModal customerId="c1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await userEvent.click(await screen.findByRole("tab", { name: /promos/i }));
+    await userEvent.click(await screen.findByText(/promo novia/i));
+    expect(await screen.findByRole("button", { name: /vender/i })).toBeEnabled();
+  });
+
+  it("una promo de DESCUENTO se despliega y deja elegir uno de sus items", async () => {
+    // El comportamiento de hoy, pero encontrable (spec §7).
+    render(<VenderModal customerId="c1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await userEvent.click(await screen.findByRole("tab", { name: /promos/i }));
+    await userEvent.click(await screen.findByText(/promo baby botox/i));
+    expect(await screen.findByText(/baby botox/i)).toBeInTheDocument();
   });
 });
