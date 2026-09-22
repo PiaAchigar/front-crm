@@ -488,6 +488,19 @@ describe("VenderModal — la solapa Promos", () => {
     expect(await screen.findByRole("tab", { name: /promos/i })).toBeInTheDocument();
   });
 
+  it("un catálogo sin la clave `promociones` no tira abajo el modal", async () => {
+    // Regresión real (encontrada en revisión): `catalogo?.promociones` sólo
+    // protege que `catalogo` sea nullish, no que le falte la CLAVE
+    // `promociones`. `catalogo?.promociones.filter(...)` explotaba antes de
+    // llegar al `?? []` cuando la clave no venía, y como ese `useMemo` corre
+    // en CADA render —no sólo al abrir la solapa Promos— tumbaba el modal
+    // entero: React lo desmontaba y quedaba un `<div />` vacío aunque Laura
+    // sólo quisiera vender un servicio suelto.
+    delete catalogo.promociones;
+    render(<VenderModal customerId="c1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    expect(await screen.findByRole("button", { name: /cuerpo full/i })).toBeInTheDocument();
+  });
+
   it("un paquete se lista con su precio y con lo que lleva adentro", async () => {
     render(<VenderModal customerId="c1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
     await userEvent.click(await screen.findByRole("tab", { name: /promos/i }));

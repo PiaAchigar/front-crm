@@ -102,23 +102,39 @@ export function VenderModal({
     return q ? proms.filter((p) => (p.name ?? "").toLowerCase().includes(q)) : proms;
   }, [catalogo, busqueda]);
 
+  // Un catálogo "seguro": cada lista cae a `[]` si esa clave no vino, en vez
+  // de romper. Un `?.` en `catalogo?.algo` sólo cubre que `catalogo` sea
+  // nullish — no que le falte una clave puntual (`catalogo` presente pero sin
+  // `servicios`, por ejemplo), y ESE es el caso que ya mordió dos veces:
+  // primero con `capacitaciones` acá abajo, después con `promociones` en
+  // `promosDisponibles` (`catalogo?.promociones.filter(...)` explotaba antes
+  // de llegar al `?? []` si faltaba la clave, y como este `useMemo` corre en
+  // cada render —no sólo en la solapa Promos— tumbaba el modal entero).
+  const catalogoSeguro = useMemo(
+    () => ({
+      servicios: catalogo?.servicios ?? [],
+      combos: catalogo?.combos ?? [],
+      depilacion: catalogo?.depilacion ?? [],
+      capacitaciones: catalogo?.capacitaciones ?? [],
+    }),
+    [catalogo],
+  );
+
   // Todo lo vendible, indexado por id, para resolver a qué item apunta cada
   // destino de una promo de descuento (la solapa Promos no vuelve a pedirle
   // nada al backend: usa el catálogo que el modal ya tiene cargado).
   const itemsPorId = useMemo(() => {
     const m = new Map<string, ItemDeCatalogo>();
-    if (catalogo) {
-      for (const l of [
-        catalogo.servicios ?? [],
-        catalogo.combos ?? [],
-        catalogo.depilacion ?? [],
-        catalogo.capacitaciones ?? [],
-      ]) {
-        for (const it of l) m.set(it.id, it);
-      }
+    for (const l of [
+      catalogoSeguro.servicios,
+      catalogoSeguro.combos,
+      catalogoSeguro.depilacion,
+      catalogoSeguro.capacitaciones,
+    ]) {
+      for (const it of l) m.set(it.id, it);
     }
     return m;
-  }, [catalogo]);
+  }, [catalogoSeguro]);
 
   // Sólo las promos que sirven para lo elegido. Antes se listaban todas y se
   // le podía aplicar a un Baby Botox una promo pensada para depilación.
@@ -130,7 +146,7 @@ export function VenderModal({
   // bajar el precio y de paso le gastaría una unidad de cupo a la promo —
   // silencioso de los dos lados. Se vende SOLO desde la solapa Promos.
   const promosDisponibles = useMemo(
-    () => promosQueAplican(catalogo?.promociones.filter((p) => !esPaquete(p)) ?? [], elegido),
+    () => promosQueAplican((catalogo?.promociones ?? []).filter((p) => !esPaquete(p)), elegido),
     [catalogo, elegido],
   );
 
@@ -324,7 +340,7 @@ export function VenderModal({
                               </span>
                             </button>
                             <ul className="pl-3 text-xs text-ink-soft">
-                              {desgloseDePromo(promo.destinos, catalogo!).map((fila, i) => (
+                              {desgloseDePromo(promo.destinos, catalogoSeguro).map((fila, i) => (
                                 <li key={i}>
                                   {fila.cantidad} × {fila.nombre}
                                 </li>
@@ -347,7 +363,7 @@ export function VenderModal({
                           </button>
                           {promoDesplegada === promo.id && (
                             <ul className="pl-3">
-                              {desgloseDePromo(promo.destinos, catalogo!).map((fila, i) => {
+                              {desgloseDePromo(promo.destinos, catalogoSeguro).map((fila, i) => {
                                 const destino = promo.destinos[i];
                                 const item = destino ? itemsPorId.get(destino.id) : undefined;
                                 return (
