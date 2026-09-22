@@ -93,6 +93,15 @@ export function VenderModal({
     return q ? items.filter((i) => i.nombre.toLowerCase().includes(q)) : items;
   }, [catalogo, solapa, busqueda]);
 
+  // El mismo buscador filtra las promos por nombre cuando la solapa activa es
+  // "Promos". Dejarlo ahí sin hacer nada repetiría en chiquito el problema que
+  // originó esta tarea: Laura escribe "promo" y no pasa nada.
+  const promosFiltradas = useMemo(() => {
+    const proms = catalogo?.promociones ?? [];
+    const q = busqueda.trim().toLowerCase();
+    return q ? proms.filter((p) => (p.name ?? "").toLowerCase().includes(q)) : proms;
+  }, [catalogo, busqueda]);
+
   // Todo lo vendible, indexado por id, para resolver a qué item apunta cada
   // destino de una promo de descuento (la solapa Promos no vuelve a pedirle
   // nada al backend: usa el catálogo que el modal ya tiene cargado).
@@ -113,8 +122,15 @@ export function VenderModal({
 
   // Sólo las promos que sirven para lo elegido. Antes se listaban todas y se
   // le podía aplicar a un Baby Botox una promo pensada para depilación.
+  //
+  // Un PAQUETE queda afuera de este desplegable aunque sus destinos coincidan
+  // con lo elegido: sus destinos son lo que lleva adentro, no "a qué le
+  // aplica un descuento". Un paquete no tiene `discountPercentage` ni
+  // `discountAmount`, así que si se colara acá el backend lo aceptaría sin
+  // bajar el precio y de paso le gastaría una unidad de cupo a la promo —
+  // silencioso de los dos lados. Se vende SOLO desde la solapa Promos.
   const promosDisponibles = useMemo(
-    () => promosQueAplican(catalogo?.promociones ?? [], elegido),
+    () => promosQueAplican(catalogo?.promociones.filter((p) => !esPaquete(p)) ?? [], elegido),
     [catalogo, elegido],
   );
 
@@ -266,29 +282,47 @@ export function VenderModal({
               {isLoading ? (
                 <p className="text-sm text-ink-soft">Cargando el catálogo…</p>
               ) : solapa === "promos" ? (
-                (catalogo?.promociones.length ?? 0) === 0 ? (
-                  <p className="text-sm text-ink-soft">Todavía no hay ninguna promo cargada.</p>
+                promosFiltradas.length === 0 ? (
+                  // Se distingue "no hay ninguna cargada" de "el buscador no
+                  // encontró", igual que en las otras solapas.
+                  <p className="text-sm text-ink-soft">
+                    {busqueda.trim()
+                      ? "Nada que coincida con la búsqueda."
+                      : "Todavía no hay ninguna promo cargada."}
+                  </p>
                 ) : (
                   <ul className="flex flex-col gap-1">
-                    {catalogo!.promociones.map((promo) =>
+                    {promosFiltradas.map((promo) =>
                       esPaquete(promo) ? (
                         // Paquete: una fila con nombre, precio y el desglose de lo
                         // que lleva. Se toca y queda elegida entera.
+                        //
+                        // El `<ul>` del desglose va AFUERA del `<button>` (como
+                        // hermano, en un `role="group"` que los agrupa): un
+                        // <button> sólo admite contenido de frase, y meterle una
+                        // lista adentro dejaba el nombre accesible del botón como
+                        // "Promo Novia $250.000 3 × Limpieza de cutis".
                         <li key={promo.id}>
-                          <button
+                          <div
+                            role="group"
+                            aria-label={promo.name ?? "Sin nombre"}
                             className={
                               paqueteElegido?.id === promo.id
-                                ? "flex w-full flex-col gap-1 rounded border border-primary bg-surface-high px-3 py-2 text-left text-sm"
-                                : "flex w-full flex-col gap-1 rounded border border-transparent px-3 py-2 text-left text-sm hover:bg-surface-high"
+                                ? "flex flex-col gap-1 rounded border border-primary bg-surface-high px-3 py-2 text-sm"
+                                : "flex flex-col gap-1 rounded border border-transparent px-3 py-2 text-sm hover:bg-surface-high"
                             }
-                            onClick={() => elegirPaquete(promo)}
                           >
-                            <span className="flex items-center justify-between gap-3">
+                            <button
+                              className="flex w-full items-center justify-between gap-3 text-left"
+                              onClick={() => elegirPaquete(promo)}
+                            >
                               <span className="text-ink">{promo.name ?? "Sin nombre"}</span>
                               <span className="shrink-0 text-xs text-ink-soft">
-                                {pesos(promo.precioDelPaquete ?? 0)}
+                                {promo.precioDelPaquete && promo.precioDelPaquete > 0
+                                  ? pesos(promo.precioDelPaquete)
+                                  : "sin precio"}
                               </span>
-                            </span>
+                            </button>
                             <ul className="pl-3 text-xs text-ink-soft">
                               {desgloseDePromo(promo.destinos, catalogo!).map((fila, i) => (
                                 <li key={i}>
@@ -296,7 +330,7 @@ export function VenderModal({
                                 </li>
                               ))}
                             </ul>
-                          </button>
+                          </div>
                         </li>
                       ) : (
                         // Descuento: se despliega y muestra sus items. Se toca UN

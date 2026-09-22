@@ -67,6 +67,11 @@ const catalogo: any = {
 
 let cuerposDePost: any[] = [];
 let cobros: any[] = [];
+// Cada body que le llegó a /purchases/quote, en orden. Sirve para probar QUÉ
+// se le pidió cotizar al backend sin depender de leer la pantalla — la
+// solapa Promos necesita esto para verificar el `origen` real, no sólo lo que
+// se ve (spec de la Task 11 y hallazgos del revisor sobre exclusión mutua).
+let cotizacionesPedidas: any[] = [];
 
 function cotizacionDe(body: { sessions: number; promotionId?: string | null }) {
   const base = 65000 * body.sessions;
@@ -95,6 +100,7 @@ function wrapper({ children }: { children: ReactNode }) {
 beforeEach(() => {
   cuerposDePost = [];
   cobros = [];
+  cotizacionesPedidas = [];
   catalogo.promociones = [...PROMOS_BASE];
   catalogo.combos = [...COMBOS_BASE];
   vi.stubGlobal(
@@ -110,6 +116,7 @@ beforeEach(() => {
       }
       if (u.includes("/purchases/quote")) {
         const body = JSON.parse(String(init?.body));
+        cotizacionesPedidas.push(body);
         return { ok: true, status: 200, json: async () => cotizacionDe(body) };
       }
       if (u.includes("/checkout")) {
@@ -497,9 +504,74 @@ describe("VenderModal — la solapa Promos", () => {
 
   it("una promo de DESCUENTO se despliega y deja elegir uno de sus items", async () => {
     // El comportamiento de hoy, pero encontrable (spec §7).
+    //
+    // OJO: la primera versión de este test hacía sólo
+    // `findByText(/baby botox/i)`, que matcheaba el encabezado "Promo Baby
+    // Botox" —ya visible ANTES del click— y pasaba igual con el desplegable
+    // roto (`{false && (...)}` en vez de `{promoDesplegada === promo.id &&
+    // (...)}`). La aserción tiene que recaer sobre el EFECTO de elegir el
+    // item: qué se le pide cotizar al backend.
     render(<VenderModal customerId="c1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
     await userEvent.click(await screen.findByRole("tab", { name: /promos/i }));
     await userEvent.click(await screen.findByText(/promo baby botox/i));
-    expect(await screen.findByText(/baby botox/i)).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("button", { name: /venus legacy 1 zona/i }));
+    await waitFor(() =>
+      expect(
+        cotizacionesPedidas.some(
+          (b) => b.origen === "servicio" && b.id === "s1" && b.promotionId === "pd1",
+        ),
+      ).toBe(true),
+    );
+  });
+
+  it("un paquete no se ofrece como descuento en el desplegable del camino suelto", async () => {
+    // Bug real (reportado por el revisor): "Promo Novia" es un paquete cuyo
+    // destino es la Limpieza de cutis. Sus destinos apuntan a un servicio de
+    // verdad, pero un paquete no es "un descuento que aplica a X" — es una
+    // cosa que se vende entera. Si se colara en este desplegable, el backend
+    // la aceptaría sin bajar el precio (no tiene discountPercentage ni
+    // discountAmount) y de paso le gastaría una unidad de cupo a la promo.
+    render(<VenderModal customerId="c1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await userEvent.click(await screen.findByRole("tab", { name: /^servicios$/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /limpieza de cutis/i }));
+    await screen.findByLabelText(/sesiones/i);
+    expect(screen.queryByRole("option", { name: /promo novia/i })).not.toBeInTheDocument();
+  });
+
+  it("elegir un item suelto después de un paquete elegido suelta el paquete", async () => {
+    // Si no se soltara, la pantalla mostraría "Cuerpo Full" pero se seguiría
+    // cotizando y vendiendo el paquete de $250.000 — los dos puestos a la vez
+    // es un estado imposible.
+    render(<VenderModal customerId="c1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await userEvent.click(await screen.findByRole("tab", { name: /promos/i }));
+    await userEvent.click(await screen.findByText(/promo novia/i));
+    await screen.findByRole("button", { name: /^vender$/i });
+
+    await userEvent.click(await screen.findByRole("tab", { name: /packs de depilación/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /cuerpo full/i }));
+
+    await waitFor(() =>
+      expect(cotizacionesPedidas.at(-1)).toMatchObject({ origen: "depilacion", id: "d1" }),
+    );
+  });
+
+  it("elegir un paquete después de un item suelto elegido lo suelta", async () => {
+    // El desplegable de acá es un <select>, con role "combobox": se busca así
+    // (y no con `getByLabelText`) porque la fila del paquete tiene su propio
+    // `aria-label="Promo Novia"` y también matchea /promo/i.
+    render(<VenderModal customerId="c1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await elegirCuerpoFull();
+    // Cuerpo Full tiene una promo aplicable (Primavera): el desplegable está.
+    expect(await screen.findByRole("combobox", { name: /promo/i })).toBeInTheDocument();
+
+    await userEvent.click(await screen.findByRole("tab", { name: /promos/i }));
+    await userEvent.click(await screen.findByText(/promo novia/i));
+
+    // El paquete suelta el item elegido: si no lo hiciera, el panel seguiría
+    // mostrando Cuerpo Full y el desplegable de Primavera (que le aplica a
+    // Cuerpo Full, no al paquete) seguiría visible al lado del paquete.
+    await waitFor(() =>
+      expect(screen.queryByRole("combobox", { name: /promo/i })).not.toBeInTheDocument(),
+    );
   });
 });
