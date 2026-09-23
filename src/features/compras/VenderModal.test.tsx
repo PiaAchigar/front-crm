@@ -230,6 +230,47 @@ describe("VenderModal — saldo a favor", () => {
   });
 });
 
+describe("VenderModal — a quién se le vende", () => {
+  it("le manda al backend a quién le está vendiendo", async () => {
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await elegirCuerpoFull();
+    await waitFor(() =>
+      expect(cotizacionesPedidas.at(-1)).toMatchObject({ customerId: "cu1" }),
+    );
+  });
+
+  it("avisa cuando está cotizando en tarifa de hombre", async () => {
+    // El listado de precios (y por lo tanto la solapa Depi Def) siempre
+    // muestra el precio de mujer: `sexo` viaja como prop, calcada de la
+    // ficha del contacto, porque el modal no tiene forma propia de
+    // resolverlo a partir del `customerId` — eso lo hace el backend.
+    render(
+      <VenderModal customerId="cu-hombre" saldoAFavor={0} sexo="hombre" onClose={() => {}} />,
+      { wrapper },
+    );
+    await elegirCuerpoFull();
+    expect(await screen.findByText(/tarifa de hombre/i)).toBeInTheDocument();
+  });
+
+  it("no lo dice cuando es mujer: sería ruido en el caso normal", async () => {
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await elegirCuerpoFull();
+    await screen.findByText(/^total$/i);
+    expect(screen.queryByText(/tarifa de hombre/i)).not.toBeInTheDocument();
+  });
+
+  it("tampoco lo dice fuera de depilación, aunque sea hombre", async () => {
+    render(
+      <VenderModal customerId="cu-hombre" saldoAFavor={0} sexo="hombre" onClose={() => {}} />,
+      { wrapper },
+    );
+    await userEvent.click(await screen.findByRole("tab", { name: /combos \/ packs/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /combo facial premium/i }));
+    await screen.findByText(/^total$/i);
+    expect(screen.queryByText(/tarifa de hombre/i)).not.toBeInTheDocument();
+  });
+});
+
 describe("VenderModal", () => {
   it("separa el catálogo en las cuatro cosas que se venden", async () => {
     render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });

@@ -144,9 +144,15 @@ export function fetchCatalogoVendible(): Promise<Catalogo> {
 
 export function cotizarVenta(
   input:
-    | { origen: OrigenVenta; id: string; sessions: number; promotionId?: string | null }
+    | {
+        origen: OrigenVenta;
+        id: string;
+        sessions: number;
+        promotionId?: string | null;
+        customerId: string;
+      }
     // Un paquete no tiene "origen" suelto: lo que lleva sale de la promo.
-    | { origen: "paquete"; promotionId: string },
+    | { origen: "paquete"; promotionId: string; customerId: string },
 ): Promise<Cotizacion> {
   return apiFetch("/api/crm/purchases/quote", {
     method: "POST",

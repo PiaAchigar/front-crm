@@ -53,11 +53,16 @@ type SolapaClave = keyof Catalogo3 | "promos";
 export function VenderModal({
   customerId,
   saldoAFavor,
+  sexo = null,
   onClose,
 }: {
   customerId: string;
   /** Saldo a favor de la clienta. Lo primero que se le ofrece antes de cobrar. */
   saldoAFavor: number;
+  /** El sexo de la clienta (ficha del contacto). NULL/ausente = mujer, igual
+   *  que resuelve el backend: sólo se usa acá para avisar en pantalla cuándo
+   *  se está cotizando en tarifa de hombre. */
+  sexo?: "mujer" | "hombre" | null;
   onClose: () => void;
 }) {
   const { data: catalogo, isLoading } = useCatalogoVendible(true);
@@ -94,6 +99,7 @@ export function VenderModal({
     id: elegido?.id ?? null,
     sessions: sesiones,
     promotionId: paqueteElegido ? paqueteElegido.id : promotionId,
+    customerId,
   });
 
   useEffect(() => {
@@ -548,6 +554,17 @@ export function VenderModal({
                         {elegido?.packDescuentoPct
                           ? ` · ${elegido.packDescuentoPct}% off`
                           : ""}
+                      </span>
+                    )}
+                    {/* Sólo depilación cobra distinto según a quién se le
+                      vende. Sin este aviso Laura ve un número más alto que el
+                      del listado (que siempre muestra el precio de mujer) y
+                      no tiene cómo saber por qué. En mujer no se dice nada a
+                      propósito: sería ruido en el caso normal, que es la
+                      enorme mayoría. */}
+                    {elegido?.origen === "depilacion" && sexo === "hombre" && (
+                      <span className="mt-2 inline-flex items-center rounded-full bg-surface-high px-2.5 py-1 text-xs text-ink-soft">
+                        Tarifa de hombre
                       </span>
                     )}
                   </div>

@@ -37,10 +37,14 @@ import { VenderModal } from "./VenderModal";
 export function ComprasCard({
   customerId,
   saldoAFavor = 0,
+  sexo = null,
 }: {
   customerId: string;
   /** Saldo a favor de la clienta, de la ficha. */
   saldoAFavor?: number;
+  /** El sexo de la clienta, de la ficha del contacto. Sólo lo usa el modal de
+   *  Vender, para avisar cuándo está cotizando depilación en tarifa de hombre. */
+  sexo?: "mujer" | "hombre" | null;
 }) {
   const { data: compras, isLoading, isError } = useCompras(customerId);
   const [vendiendo, setVendiendo] = useState(false);
@@ -90,6 +94,7 @@ export function ComprasCard({
         <VenderModal
           customerId={customerId}
           saldoAFavor={saldoAFavor}
+          sexo={sexo}
           onClose={() => setVendiendo(false)}
         />
       )}

@@ -18,6 +18,9 @@ export type Contact = {
   country: string | null;
   notes: string | null;
   isArchived: boolean | null;
+  /** El tramo de tarifa y tiempo de depilación definitiva (1.56.0). NULL =
+   *  mujer, que es el comportamiento de siempre: lo resuelve el backend. */
+  sexo: "mujer" | "hombre" | null;
   createdAt: string;
 };
 
@@ -38,6 +41,7 @@ export type ContactInput = {
   postalCode?: string;
   country?: string;
   isArchived?: boolean;
+  sexo?: "mujer" | "hombre" | null;
 };
 
 export type CustomerAccount = {

@@ -16,6 +16,7 @@ export function ContactFormModal({
   const [name, setName] = useState(contact?.name ?? "");
   const [phone, setPhone] = useState(contact?.phone ?? "");
   const [email, setEmail] = useState(contact?.email ?? "");
+  const [sexo, setSexo] = useState<"" | "mujer" | "hombre">(contact?.sexo ?? "");
   const [whatsappId, setWhatsappId] = useState(contact?.whatsappId ?? "");
   const [instagramId, setInstagramId] = useState(contact?.instagramId ?? "");
   const [facebookId, setFacebookId] = useState(contact?.facebookId ?? "");
@@ -50,6 +51,7 @@ export function ContactFormModal({
       postalCode: clean(postalCode),
       country: clean(country),
       notes: clean(notes),
+      sexo: sexo === "" ? undefined : sexo,
     });
   }
 
@@ -66,6 +68,22 @@ export function ContactFormModal({
             <input className={field} placeholder="Nombre *" value={name} onChange={(e) => setName(e.target.value)} />
             <input className={field} placeholder="Teléfono" value={phone} onChange={(e) => setPhone(e.target.value)} />
             <input className={field} placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <label className="text-xs text-ink-soft">
+              Sexo
+              <select
+                className={`${field} mt-1 w-full`}
+                value={sexo}
+                onChange={(e) => setSexo(e.target.value as "" | "mujer" | "hombre")}
+              >
+                <option value=""></option>
+                <option value="mujer">Mujer</option>
+                <option value="hombre">Hombre</option>
+              </select>
+            </label>
+            <span className="mt-0.5 block text-xs text-ink-soft">
+              Define la tarifa y el tiempo de depilación definitiva. Sin cargar se calcula
+              como mujer.
+            </span>
           </div>
 
           <div className="flex flex-col gap-3">

@@ -84,23 +84,32 @@ export function useCotizacion(input: {
   id: string | null;
   sessions: number;
   promotionId: string | null;
+  /** A quién se le está cotizando: el backend lo necesita para resolver la
+   *  tarifa de depilación (mujer/hombre) contra ESE cliente. */
+  customerId: string | null;
 }) {
   return useQuery({
     queryKey: ["cotizacion", input],
     queryFn: () =>
       input.origen === "paquete"
         // Un paquete no tiene "origen" suelto: lo que lleva sale de la promo.
-        ? cotizarVenta({ origen: "paquete", promotionId: input.promotionId! })
+        ? cotizarVenta({
+            origen: "paquete",
+            promotionId: input.promotionId!,
+            customerId: input.customerId!,
+          })
         : cotizarVenta({
             origen: input.origen!,
             id: input.id!,
             sessions: input.sessions,
             promotionId: input.promotionId,
+            customerId: input.customerId!,
           }),
     enabled:
-      input.origen === "paquete"
+      !!input.customerId &&
+      (input.origen === "paquete"
         ? !!input.promotionId
-        : !!input.origen && !!input.id && input.sessions > 0,
+        : !!input.origen && !!input.id && input.sessions > 0),
     retry: false,
   });
 }
