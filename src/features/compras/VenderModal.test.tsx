@@ -46,21 +46,58 @@ const PROMOS_BASE = [
 ];
 
 const COMBOS_BASE = [
-  { origen: "combo", id: "c1", nombre: "Combo Facial Premium", packSesiones: null, packDescuentoPct: null, precioDesde: 51000 },
-  { origen: "combo", id: "cx1", nombre: "Combo Express", packSesiones: null, packDescuentoPct: null, precioDesde: 35000 },
+  {
+    origen: "combo",
+    id: "c1",
+    nombre: "Combo Facial Premium",
+    packSesiones: null,
+    packDescuentoPct: null,
+    precioDesde: 51000,
+    descripcion: "Limpieza profunda más masaje facial.",
+    desglose: [
+      { nombre: "Limpieza de cutis", cantidad: 1 },
+      { nombre: "Masaje facial", cantidad: 1 },
+    ],
+  },
+  { origen: "combo", id: "cx1", nombre: "Combo Express", packSesiones: null, packDescuentoPct: null, precioDesde: 35000, descripcion: null, desglose: [] },
+  // Un PACK de catálogo: el caso de "Pack 1 - Prueba" en producción, que era
+  // invendible porque el modal le pedía al backend sus 3 sesiones.
+  {
+    origen: "combo",
+    id: "pk-cat",
+    nombre: "Pack Baby Botox",
+    packSesiones: 3,
+    packDescuentoPct: null,
+    precioDesde: 598000,
+    descripcion: null,
+    desglose: [{ nombre: "Baby Botox", cantidad: 3 }],
+  },
 ];
 
 const catalogo: any = {
   combos: [...COMBOS_BASE],
   depilacion: [
-    { origen: "depilacion", id: "d1", nombre: "Cuerpo Full", packSesiones: 3, packDescuentoPct: 15, precioDesde: 65000 },
+    {
+      origen: "depilacion",
+      id: "d1",
+      nombre: "Cuerpo Full",
+      packSesiones: 3,
+      packDescuentoPct: 15,
+      precioDesde: 65000,
+      descripcion: null,
+      desglose: [
+        { nombre: "Axila", cantidad: 1 },
+        { nombre: "Pierna entera", cantidad: 1 },
+        { nombre: "Zona a elección", cantidad: 1 },
+      ],
+    },
   ],
   capacitaciones: [
-    { origen: "capacitacion", id: "t1", nombre: "Formación en Depilación Láser", packSesiones: 1, packDescuentoPct: 0, precioDesde: 250000 },
+    { origen: "capacitacion", id: "t1", nombre: "Formación en Depilación Láser", packSesiones: 1, packDescuentoPct: 0, precioDesde: 250000, descripcion: null, desglose: [] },
   ],
   servicios: [
-    { origen: "servicio", id: "s1", nombre: "Venus Legacy 1 zona", packSesiones: 3, packDescuentoPct: 15, precioDesde: 10000 },
-    { origen: "servicio", id: "s-limpieza", nombre: "Limpieza de cutis", packSesiones: null, packDescuentoPct: null, precioDesde: 45000 },
+    { origen: "servicio", id: "s1", nombre: "Venus Legacy 1 zona", packSesiones: 3, packDescuentoPct: 15, precioDesde: 10000, descripcion: null, desglose: [] },
+    { origen: "servicio", id: "s-limpieza", nombre: "Limpieza de cutis", packSesiones: null, packDescuentoPct: null, precioDesde: 45000, descripcion: null, desglose: [] },
   ],
   promociones: [...PROMOS_BASE],
 };
@@ -196,23 +233,27 @@ describe("VenderModal — saldo a favor", () => {
 describe("VenderModal", () => {
   it("separa el catálogo en las cuatro cosas que se venden", async () => {
     render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
-    expect(await screen.findByRole("tab", { name: /packs de depilación/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /combos/i })).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: /depi def/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /combos \/ packs/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /servicios/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /capacitaciones/i })).toBeInTheDocument();
   });
 
-  it("una capacitación se vende entera: no se eligen sesiones", async () => {
+  it("una capacitación se vende entera: el campo de sesiones ni aparece", async () => {
+    // Antes el campo estaba, deshabilitado. Un control gris que no se puede
+    // tocar sólo hace preguntarse por qué está: si no hay nada que elegir, no
+    // hay campo.
     render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
     await userEvent.click(await screen.findByRole("tab", { name: /capacitaciones/i }));
     await userEvent.click(await screen.findByRole("button", { name: /formación en depilación/i }));
-    expect(await screen.findByLabelText(/sesiones/i)).toBeDisabled();
+    await screen.findByText(/^total$/i);
+    expect(screen.queryByLabelText(/sesiones/i)).not.toBeInTheDocument();
   });
 
   it("una solapa vacía dice que no hay nada cargado, no que la búsqueda falló", async () => {
     catalogo.combos = [];
     render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
-    await userEvent.click(await screen.findByRole("tab", { name: /^combos$/i }));
+    await userEvent.click(await screen.findByRole("tab", { name: /combos \/ packs/i }));
     expect(await screen.findByText(/no hay ninguno cargado/i)).toBeInTheDocument();
   });
 
@@ -289,7 +330,7 @@ describe("VenderModal", () => {
   });
 
   async function irACombosYElegir(nombre: RegExp) {
-    await userEvent.click(await screen.findByRole("tab", { name: /^combos$/i }));
+    await userEvent.click(await screen.findByRole("tab", { name: /combos \/ packs/i }));
     await userEvent.click(await screen.findByRole("button", { name: nombre }));
   }
 
@@ -304,7 +345,9 @@ describe("VenderModal", () => {
     // le puede aplicar a un Baby Botox una promo pensada para depilación.
     render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
     await irACombosYElegir(/combo express/i);
-    await screen.findByLabelText(/sesiones/i);
+    // Se espera al panel de precios y no al campo de sesiones: un combo ya no
+    // lo tiene (se vende entero), así que como ancla nunca llegaría.
+    await screen.findByText(/^total$/i);
     expect(screen.queryByRole("option", { name: /primavera/i })).not.toBeInTheDocument();
   });
 
@@ -461,7 +504,7 @@ describe("VenderModal — el catálogo al reabrir", () => {
       <VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />,
       { wrapper: conCache },
     );
-    await userEvent.click(await screen.findByRole("tab", { name: /^combos$/i }));
+    await userEvent.click(await screen.findByRole("tab", { name: /combos \/ packs/i }));
     await screen.findByRole("button", { name: /combo facial premium/i });
     primera.unmount();
 
@@ -474,7 +517,7 @@ describe("VenderModal — el catálogo al reabrir", () => {
     render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, {
       wrapper: conCache,
     });
-    await userEvent.click(await screen.findByRole("tab", { name: /^combos$/i }));
+    await userEvent.click(await screen.findByRole("tab", { name: /combos \/ packs/i }));
     expect(await screen.findByRole("button", { name: /combo1 - prueba/i })).toBeInTheDocument();
   });
 });
@@ -560,7 +603,7 @@ describe("VenderModal — la solapa Promos", () => {
     await userEvent.click(await screen.findByText(/promo novia/i));
     await screen.findByRole("button", { name: /^vender$/i });
 
-    await userEvent.click(await screen.findByRole("tab", { name: /packs de depilación/i }));
+    await userEvent.click(await screen.findByRole("tab", { name: /depi def/i }));
     await userEvent.click(await screen.findByRole("button", { name: /cuerpo full/i }));
 
     await waitFor(() =>
@@ -586,5 +629,115 @@ describe("VenderModal — la solapa Promos", () => {
     await waitFor(() =>
       expect(screen.queryByRole("combobox", { name: /promo/i })).not.toBeInTheDocument(),
     );
+  });
+});
+
+/**
+ * Qué trae lo elegido, a la derecha.
+ *
+ * Antes la pantalla mostraba sólo el NOMBRE: "Pack 1 - Prueba" y "Cuerpo
+ * Full" no dicen qué se lleva la clienta, y Laura tenía que abrir el
+ * dashboard en otra pestaña para saber qué estaba por cobrar.
+ */
+describe("VenderModal — el desglose de lo elegido", () => {
+  it("un combo lista sus servicios con las cantidades", async () => {
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await userEvent.click(await screen.findByRole("tab", { name: /combos \/ packs/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /combo facial premium/i }));
+
+    const trae = await screen.findByRole("region", { name: /qué trae/i });
+    expect(trae).toHaveTextContent("Limpieza de cutis");
+    expect(trae).toHaveTextContent("Masaje facial");
+    // Sin "1×": diez zonas de a una son diez veces la misma palabra, y de
+    // paso le sacan fuerza al "3×" de un pack, que sí dice algo.
+    expect(trae).not.toHaveTextContent("1×");
+  });
+
+  it("muestra la descripción cargada en el catálogo", async () => {
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await userEvent.click(await screen.findByRole("tab", { name: /combos \/ packs/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /combo facial premium/i }));
+    expect(await screen.findByText(/limpieza profunda más masaje facial/i)).toBeInTheDocument();
+  });
+
+  it("un pack de depilación lista sus zonas, con la zona a elección aparte", async () => {
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await userEvent.click(await screen.findByRole("button", { name: /cuerpo full/i }));
+
+    const trae = await screen.findByRole("region", { name: /qué trae/i });
+    expect(trae).toHaveTextContent("Axila");
+    expect(trae).toHaveTextContent("Pierna entera");
+    expect(trae).toHaveTextContent("Zona a elección");
+  });
+
+  it("un servicio suelto no dibuja el bloque: no tiene qué desglosar", async () => {
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await userEvent.click(await screen.findByRole("tab", { name: /^servicios$/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /limpieza de cutis/i }));
+    await screen.findByText(/^total$/i);
+    expect(screen.queryByRole("region", { name: /qué trae/i })).not.toBeInTheDocument();
+  });
+
+  it("un paquete de promo también dice qué lleva", async () => {
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await userEvent.click(await screen.findByRole("tab", { name: /promos/i }));
+    await userEvent.click(await screen.findByText(/promo novia/i));
+
+    const trae = await screen.findByRole("region", { name: /qué trae/i });
+    expect(trae).toHaveTextContent("3×");
+    expect(trae).toHaveTextContent("Limpieza de cutis");
+  });
+});
+
+/**
+ * El bug que dejaba invendible a TODO pack del catálogo.
+ *
+ * Al elegir un item el modal ponía `sesiones = packSesiones`. Para un pack de
+ * catálogo eso son 3, y el backend rechaza cotizar un combo con más de una
+ * repetición ("Un combo se vende de a uno: las sesiones ya están en sus
+ * líneas") porque el precio YA viene multiplicado: pedir 3 sería cobrar 9.
+ * La cotización fallaba siempre, y con ella el botón Vender quedaba apagado.
+ */
+describe("VenderModal — un pack de catálogo se cotiza de a uno", () => {
+  it("le pide al backend 1 sesión, no las 3 del pack", async () => {
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await userEvent.click(await screen.findByRole("tab", { name: /combos \/ packs/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /pack baby botox/i }));
+
+    await waitFor(() =>
+      expect(cotizacionesPedidas.at(-1)).toMatchObject({
+        origen: "combo",
+        id: "pk-cat",
+        sessions: 1,
+      }),
+    );
+  });
+
+  it("igual dice que es un pack de 3: el descuento ya está en el precio", async () => {
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await userEvent.click(await screen.findByRole("tab", { name: /combos \/ packs/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /pack baby botox/i }));
+    expect(await screen.findByText(/pack de 3/i)).toBeInTheDocument();
+  });
+
+  it("no le ofrece elegir sesiones: el pack se vende entero", async () => {
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await userEvent.click(await screen.findByRole("tab", { name: /combos \/ packs/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /pack baby botox/i }));
+    await screen.findByText(/^total$/i);
+    expect(screen.queryByLabelText(/sesiones/i)).not.toBeInTheDocument();
+  });
+
+  it("un pack de depilación SÍ arranca en sus 3 sesiones: ahí sí se elige", async () => {
+    // La regla es distinta y por eso se prueba: en depilación el precio es
+    // por sesión y las sesiones se piden en la cotización. El fix de arriba
+    // no tiene que habérselas llevado puestas.
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await userEvent.click(await screen.findByRole("button", { name: /cuerpo full/i }));
+
+    await waitFor(() =>
+      expect(cotizacionesPedidas.at(-1)).toMatchObject({ origen: "depilacion", sessions: 3 }),
+    );
+    expect(await screen.findByLabelText(/sesiones/i)).toBeInTheDocument();
   });
 });

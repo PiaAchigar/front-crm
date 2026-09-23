@@ -71,6 +71,9 @@ export type OrigenVenta = "combo" | "depilacion" | "servicio" | "capacitacion";
 
 /** Un item del catálogo, ya normalizado por el backend: los tres orígenes
  *  llegan con la misma forma para que la pantalla no aprenda tres modelos. */
+/** Un renglón de "qué trae esto": `3 × Baby Botox`. */
+export type FilaDeDesglose = { nombre: string; cantidad: number };
+
 export type ItemDeCatalogo = {
   origen: OrigenVenta;
   id: string;
@@ -80,6 +83,13 @@ export type ItemDeCatalogo = {
   /** El descuento que aplica ese pack, para poder decirlo en pantalla. */
   packDescuentoPct: number | null;
   precioDesde: number;
+  /** La descripción cargada en el catálogo. `null` si está vacía. */
+  descripcion: string | null;
+  /**
+   * Qué trae este item. Vacío en servicios y capacitaciones, que son una cosa
+   * sola. Viene en el catálogo, así que mostrarlo no pide nada al backend.
+   */
+  desglose: FilaDeDesglose[];
 };
 
 export type PromoVendible = {
