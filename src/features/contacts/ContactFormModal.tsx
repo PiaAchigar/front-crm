@@ -51,7 +51,11 @@ export function ContactFormModal({
       postalCode: clean(postalCode),
       country: clean(country),
       notes: clean(notes),
-      sexo: sexo === "" ? undefined : sexo,
+      // `null` explícito, no `undefined`: `undefined` lo descarta
+      // `JSON.stringify` en `updateContact`, y el PATCH saldría sin la
+      // clave `sexo` — el backend no tocaría la columna y vaciar el campo
+      // en la ficha nunca limpiaría lo que ya estaba guardado en la base.
+      sexo: sexo === "" ? null : sexo,
     });
   }
 

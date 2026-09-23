@@ -52,7 +52,30 @@ describe("ContactFormModal — sexo", () => {
     await userEvent.type(screen.getByPlaceholderText(/^nombre/i), "Clienta Nueva");
     await userEvent.click(screen.getByRole("button", { name: /guardar/i }));
 
-    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ sexo: undefined }));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ sexo: null }));
+  });
+
+  // Ronda de arreglos 1: el bug era exactamente que esto no se probaba. Un
+  // contacto que YA tiene sexo cargado, al vaciarlo, tiene que mandar
+  // `sexo: null` EXPLÍCITO en el body — no `undefined`, que `JSON.stringify`
+  // descarta y deja la columna sin tocar en el backend (PATCH silencioso que
+  // no limpia nada).
+  it("vacía un sexo ya cargado: manda null explícito, no lo omite", async () => {
+    const onSave = vi.fn();
+    render(
+      <ContactFormModal
+        contact={{ ...contactoBase, sexo: "hombre" }}
+        onClose={() => {}}
+        onSave={onSave}
+      />,
+    );
+
+    await userEvent.selectOptions(screen.getByLabelText(/sexo/i), "");
+    await userEvent.click(screen.getByRole("button", { name: /guardar/i }));
+
+    const guardado = onSave.mock.calls.at(-1)?.[0];
+    expect(guardado).toMatchObject({ sexo: null });
+    expect("sexo" in guardado).toBe(true);
   });
 
   it("precarga el sexo que ya tenía el contacto", async () => {
