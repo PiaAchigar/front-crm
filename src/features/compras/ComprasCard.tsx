@@ -255,10 +255,15 @@ function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: stri
                             <button
                               type="button"
                               onClick={() =>
-                                pedirAgendar({
-                                  customerId: clienta,
-                                  serviceId: s.serviceId,
-                                })
+                                pedirAgendar(
+                                  // Una línea de depilación no tiene servicio: su identidad es el
+                                  // pack (`depilationComboId`, 1.55.0). El turno sale de la LÍNEA,
+                                  // que es la que sabe qué sesión es, cuánto presupuesto trae y si
+                                  // está paga.
+                                  s.serviceId
+                                    ? { customerId: clienta, serviceId: s.serviceId }
+                                    : { customerId: clienta, purchaseServiceId: s.id },
+                                )
                               }
                               className={`rounded-full px-2 py-0.5 underline-offset-2 hover:underline ${e.clase}`}
                             >

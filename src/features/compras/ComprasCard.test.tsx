@@ -95,6 +95,31 @@ const comboPurchase: Compra = {
   ],
 };
 
+/**
+ * Una línea de depilación: sin `serviceId` propio —su identidad es el pack,
+ * `depilationComboId`— y con `id` la línea concreta (`purchaseServiceId`) de
+ * la que tiene que salir el turno.
+ */
+const depilacionPurchase: Compra = {
+  ...pack,
+  id: "cp-depi",
+  description: "Depilación Definitiva — pack de 3",
+  serviceId: null,
+  servicios: [
+    {
+      id: "cps-depi-1",
+      serviceId: null,
+      serviceName: null,
+      repeticion: 1,
+      orden: 1,
+      appointmentId: null,
+      appointmentStart: null,
+      consumedAt: null,
+      estado: "disponible",
+    },
+  ],
+};
+
 let compras: Compra[] = [];
 let impacto = {
   pagos: 0,
@@ -392,7 +417,21 @@ describe("ComprasCard", () => {
 });
 
 describe("ComprasCard — ir a agendar", () => {
-  it('la pastilla "A agendar" pide abrir la agenda con la clienta y el servicio', async () => {
+  it('la pastilla "A agendar" de una línea de depilación manda la LÍNEA, no un servicio', async () => {
+    // Una línea de depilación no tiene `serviceId`: su identidad es el pack, y
+    // el turno necesita saber de QUÉ sesión sale para el presupuesto y la
+    // puerta de pago.
+    compras = [depilacionPurchase];
+    const user = userEvent.setup();
+    render(<ComprasCard customerId="cu1" />, { wrapper });
+    await user.click(await screen.findByRole("button", { name: /ver servicios/i }));
+
+    await user.click(screen.getByRole("button", { name: /a agendar/i }));
+
+    expect(pedirAgendar).toHaveBeenCalledWith({ customerId: "cu1", purchaseServiceId: "cps-depi-1" });
+  });
+
+  it("una línea de servicio sigue mandando el serviceId, como siempre", async () => {
     const user = userEvent.setup();
     render(<ComprasCard customerId="cu1" />, { wrapper });
     await user.click(await screen.findByRole("button", { name: /ver servicios/i }));

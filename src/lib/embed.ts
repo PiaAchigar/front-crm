@@ -48,21 +48,35 @@ export function useEmbedToken(): { ready: boolean; token: string | null } {
 const AGENDAR_MSG = "piubella:crm:agendar";
 
 /**
- * Pedirle al dashboard que abra la agenda para agendar este servicio.
+ * Lo que necesita la agenda para abrir el turno nuevo ya cargado.
+ *
+ * Una línea de servicio normal se identifica por `serviceId`. Una línea de
+ * depilación NO tiene servicio propio —su identidad es el pack
+ * (`depilationComboId`, 1.55.0)— así que en su lugar manda `purchaseServiceId`:
+ * la LÍNEA comprada de la que sale el turno, que es la que sabe de qué sesión
+ * se trata, cuánto presupuesto de minutos trae y si está paga.
+ */
+export type PrefillAgendar =
+  | { customerId: string; serviceId: string }
+  | { customerId: string; purchaseServiceId: string };
+
+/**
+ * Pedirle al dashboard que abra la agenda para agendar este servicio (o esta
+ * sesión de depilación).
  *
  * El CRM corre dentro de un `<iframe>`, así que no puede navegar al dashboard
  * por su cuenta: el navegador se lo impide entre origins distintos. Se lo pide
  * por el mismo canal `postMessage` del handshake del token.
  *
- * **Manda la clienta y el servicio aunque hoy no se usen.** El dashboard, por
- * ahora, sólo abre la agenda. El paso que sigue —abrir el turno nuevo ya
- * cargado con estos dos— vive todo del lado del dashboard y la agenda; si el
- * mensaje no los trajera, sumarlos después obligaría a tocar los tres repos
- * en vez de uno.
+ * **Manda la clienta y el servicio/línea aunque hoy no se usen.** El
+ * dashboard, por ahora, sólo abre la agenda. El paso que sigue —abrir el
+ * turno nuevo ya cargado con estos dos— vive todo del lado del dashboard y la
+ * agenda; si el mensaje no los trajera, sumarlos después obligaría a tocar
+ * los tres repos en vez de uno.
  *
  * Fuera del iframe no hace nada: el CRM suelto no sabe dónde vive la agenda.
  */
-export function pedirAgendar(datos: { customerId: string; serviceId: string | null }): void {
+export function pedirAgendar(datos: PrefillAgendar): void {
   if (!isEmbedded) return;
   window.parent.postMessage({ type: AGENDAR_MSG, ...datos }, DASHBOARD_ORIGIN ?? "*");
 }
