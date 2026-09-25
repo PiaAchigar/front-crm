@@ -24,6 +24,30 @@ import {
 import { VenderModal } from "./VenderModal";
 
 /**
+ * Qué hay que mandarle a la agenda para agendar ESTA línea — o `null` si
+ * desde acá no se agenda.
+ *
+ * Son tres clases de línea y no dos:
+ *
+ * - **Depilación** (`depilationComboId`): va la LÍNEA, que es la que sabe qué
+ *   sesión es, cuánto presupuesto trae y si está paga. También tiene
+ *   `serviceId` en NULL, pero no es por eso que se reconoce.
+ * - **Servicio**: va el `serviceId`, como siempre.
+ * - **Capacitación**: `serviceId` Y `depilationComboId` en NULL. No se agenda
+ *   desde la ficha: sus fechas salen del cronograma de la capacitación. Antes
+ *   caía en la rama de depilación —porque la condición miraba la ausencia de
+ *   `serviceId`—, el `GET /para-agendar` respondía 404 y el modal de la
+ *   agenda quedaba en blanco, sin ningún mensaje.
+ */
+function aDondeAgendar(
+  s: Compra["servicios"][number],
+): { serviceId: string } | { purchaseServiceId: string } | null {
+  if (s.depilationComboId) return { purchaseServiceId: s.id };
+  if (s.serviceId) return { serviceId: s.serviceId };
+  return null;
+}
+
+/**
  * "Compras del Cliente" — lo que la clienta adquirió y en qué anda.
  *
  * Todo lo que se ve acá es DERIVADO: cuántos servicios quedan por agendar sale
@@ -251,20 +275,10 @@ function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: stri
                               las demás describen algo que ya pasó. Suelto (sin
                               el dashboard alrededor) tampoco, porque el CRM no
                               sabe dónde vive la agenda. */}
-                          {s.estado === "disponible" && isEmbedded && clienta ? (
+                          {s.estado === "disponible" && isEmbedded && clienta && aDondeAgendar(s) ? (
                             <button
                               type="button"
-                              onClick={() =>
-                                pedirAgendar(
-                                  // Una línea de depilación no tiene servicio: su identidad es el
-                                  // pack (`depilationComboId`, 1.55.0). El turno sale de la LÍNEA,
-                                  // que es la que sabe qué sesión es, cuánto presupuesto trae y si
-                                  // está paga.
-                                  s.serviceId
-                                    ? { customerId: clienta, serviceId: s.serviceId }
-                                    : { customerId: clienta, purchaseServiceId: s.id },
-                                )
-                              }
+                              onClick={() => pedirAgendar({ customerId: clienta, ...aDondeAgendar(s)! })}
                               className={`rounded-full px-2 py-0.5 underline-offset-2 hover:underline ${e.clase}`}
                             >
                               {e.texto}

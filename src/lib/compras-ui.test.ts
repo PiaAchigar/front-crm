@@ -10,7 +10,7 @@ import {
 import type { Compra, ServicioComprado } from "../api/compras";
 
 const svcBase: ServicioComprado = {
-  id: "sv1", serviceId: "s1", serviceName: "Baby Botox",
+  id: "sv1", serviceId: "s1", depilationComboId: null, serviceName: "Baby Botox",
   repeticion: 1, orden: 1, appointmentId: null, appointmentStart: null,
   consumedAt: null, estado: "disponible" as const,
 };

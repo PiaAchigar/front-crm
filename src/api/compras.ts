@@ -19,6 +19,15 @@ export type EstadoSesion = "consumida" | "perdida" | "agendada" | "vencida" | "d
 export type ServicioComprado = {
   id: string;
   serviceId: string | null;
+  /**
+   * El pack de depilación de ESTA línea, si es una línea de depilación.
+   *
+   * Es lo único que separa una línea de depilación de una de CAPACITACIÓN:
+   * las dos tienen `serviceId` en NULL. Decidir por esa ausencia mandaba a la
+   * agenda a abrir el modal de depilación sobre un instructorado, que
+   * responde 404 y deja la pantalla en blanco.
+   */
+  depilationComboId: string | null;
   serviceName: string | null;
   repeticion: number | null;
   orden: number | null;

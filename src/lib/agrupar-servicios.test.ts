@@ -10,6 +10,7 @@ function svc(
   return {
     id,
     serviceId: `s-${serviceName}`,
+    depilationComboId: null,
     serviceName,
     repeticion,
     orden: 1,
@@ -31,6 +32,7 @@ function svcSinCatalogo(id: string, repeticion: number): ServicioComprado {
   return {
     id,
     serviceId: null,
+    depilationComboId: null,
     serviceName: null,
     repeticion,
     orden: 1,

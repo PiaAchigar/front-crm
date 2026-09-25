@@ -52,9 +52,9 @@ const pack: Compra = {
   saldo: 66000,
   saldada: false,
   servicios: [
-    { id: "s1", serviceId: "svc-full", serviceName: "Cuerpo Full", repeticion: 1, orden: 1, appointmentId: "a1", appointmentStart: "2026-09-01T13:00:00.000Z", consumedAt: "2026-09-01T14:00:00.000Z", estado: "consumida" },
-    { id: "s2", serviceId: "svc-full", serviceName: "Cuerpo Full", repeticion: 2, orden: 1, appointmentId: "a2", appointmentStart: "2026-10-01T13:00:00.000Z", consumedAt: null, estado: "agendada" },
-    { id: "s3", serviceId: "svc-full", serviceName: "Cuerpo Full", repeticion: 3, orden: 1, appointmentId: null, appointmentStart: null, consumedAt: null, estado: "disponible" },
+    { id: "s1", serviceId: "svc-full", depilationComboId: null, serviceName: "Cuerpo Full", repeticion: 1, orden: 1, appointmentId: "a1", appointmentStart: "2026-09-01T13:00:00.000Z", consumedAt: "2026-09-01T14:00:00.000Z", estado: "consumida" },
+    { id: "s2", serviceId: "svc-full", depilationComboId: null, serviceName: "Cuerpo Full", repeticion: 2, orden: 1, appointmentId: "a2", appointmentStart: "2026-10-01T13:00:00.000Z", consumedAt: null, estado: "agendada" },
+    { id: "s3", serviceId: "svc-full", depilationComboId: null, serviceName: "Cuerpo Full", repeticion: 3, orden: 1, appointmentId: null, appointmentStart: null, consumedAt: null, estado: "disponible" },
   ],
 };
 
@@ -73,6 +73,7 @@ const comboPurchase: Compra = {
     {
       id: "sv1",
       serviceId: "s1",
+      depilationComboId: null,
       serviceName: "Baby Botox",
       repeticion: 1,
       orden: 1,
@@ -84,6 +85,7 @@ const comboPurchase: Compra = {
     {
       id: "sv2",
       serviceId: "s2",
+      depilationComboId: null,
       serviceName: "Depilación facial con hilo",
       repeticion: 1,
       orden: 1,
@@ -109,7 +111,34 @@ const depilacionPurchase: Compra = {
     {
       id: "cps-depi-1",
       serviceId: null,
+      depilationComboId: "combo-1",
       serviceName: null,
+      repeticion: 1,
+      orden: 1,
+      appointmentId: null,
+      appointmentStart: null,
+      consumedAt: null,
+      estado: "disponible",
+    },
+  ],
+};
+
+/**
+ * Una línea de CAPACITACIÓN: también sin `serviceId` —igual que la de
+ * depilación— pero sin `depilationComboId`. Es lo que hace que "sin
+ * serviceId ⇒ depilación" sea una conclusión equivocada.
+ */
+const capacitacionPurchase: Compra = {
+  ...pack,
+  id: "cp-cap",
+  description: "Instructorado de Pilates Reformer",
+  serviceId: null,
+  servicios: [
+    {
+      id: "cps-cap-1",
+      serviceId: null,
+      depilationComboId: null,
+      serviceName: "Instructorado de Pilates Reformer",
       repeticion: 1,
       orden: 1,
       appointmentId: null,
@@ -341,9 +370,9 @@ describe("ComprasCard", () => {
         agendadas: 0,
         disponibles: 2,
         servicios: [
-          { id: "s1", serviceId: "svc-full", serviceName: "Cuerpo Full", repeticion: 1, orden: 1, appointmentId: "a1", appointmentStart: "2026-09-01T13:00:00.000Z", consumedAt: null, estado: "perdida" },
-          { id: "s2", serviceId: "svc-full", serviceName: "Cuerpo Full", repeticion: 2, orden: 1, appointmentId: null, appointmentStart: null, consumedAt: null, estado: "disponible" },
-          { id: "s3", serviceId: "svc-full", serviceName: "Cuerpo Full", repeticion: 3, orden: 1, appointmentId: null, appointmentStart: null, consumedAt: null, estado: "disponible" },
+          { id: "s1", serviceId: "svc-full", depilationComboId: null, serviceName: "Cuerpo Full", repeticion: 1, orden: 1, appointmentId: "a1", appointmentStart: "2026-09-01T13:00:00.000Z", consumedAt: null, estado: "perdida" },
+          { id: "s2", serviceId: "svc-full", depilationComboId: null, serviceName: "Cuerpo Full", repeticion: 2, orden: 1, appointmentId: null, appointmentStart: null, consumedAt: null, estado: "disponible" },
+          { id: "s3", serviceId: "svc-full", depilationComboId: null, serviceName: "Cuerpo Full", repeticion: 3, orden: 1, appointmentId: null, appointmentStart: null, consumedAt: null, estado: "disponible" },
         ],
       },
     ];
@@ -429,6 +458,29 @@ describe("ComprasCard — ir a agendar", () => {
     await user.click(screen.getByRole("button", { name: /a agendar/i }));
 
     expect(pedirAgendar).toHaveBeenCalledWith({ customerId: "cu1", purchaseServiceId: "cps-depi-1" });
+  });
+
+  /**
+   * Ronda de arreglos 3 (Important 3). `service_id` en NULL NO significa
+   * "depilación": las líneas de capacitación también lo tienen en NULL. La
+   * pastilla decidía por esa ausencia, así que sobre un instructorado
+   * mandaba `purchaseServiceId`, el modal de la agenda abría en modo
+   * depilación, el `GET /para-agendar` daba 404 y la pantalla quedaba en
+   * blanco, sin ningún mensaje. Lo que separa una de la otra es
+   * `depilationComboId`.
+   */
+  it("la de una CAPACITACIÓN no abre el modal de depilación: no es un botón", async () => {
+    compras = [capacitacionPurchase];
+    pedirAgendar.mockClear();
+    const user = userEvent.setup();
+    render(<ComprasCard customerId="cu1" />, { wrapper });
+    await user.click(await screen.findByRole("button", { name: /ver servicios/i }));
+
+    expect(screen.queryByRole("button", { name: /a agendar/i })).not.toBeInTheDocument();
+    // La etiqueta sigue estando: la sesión está disponible, sólo que desde
+    // acá no se agenda.
+    expect(screen.getByText("A agendar")).toBeInTheDocument();
+    expect(pedirAgendar).not.toHaveBeenCalled();
   });
 
   it("una línea de servicio sigue mandando el serviceId, como siempre", async () => {
