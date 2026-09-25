@@ -68,11 +68,11 @@ export type PrefillAgendar =
  * por su cuenta: el navegador se lo impide entre origins distintos. Se lo pide
  * por el mismo canal `postMessage` del handshake del token.
  *
- * **Manda la clienta y el servicio/línea aunque hoy no se usen.** El
- * dashboard, por ahora, sólo abre la agenda. El paso que sigue —abrir el
- * turno nuevo ya cargado con estos dos— vive todo del lado del dashboard y la
- * agenda; si el mensaje no los trajera, sumarlos después obligaría a tocar
- * los tres repos en vez de uno.
+ * El dashboard escucha esto en `agendar-handoff.ts`, arma la URL del iframe
+ * de la agenda con la clienta y el servicio/línea (mismos nombres que manda
+ * acá), y la agenda los lee al montar (`prefillDesdeUrl`, en su propio
+ * `lib/embed.ts`) para abrir el turno nuevo ya cargado — todo eso vive en los
+ * otros dos repos, no en este archivo.
  *
  * Fuera del iframe no hace nada: el CRM suelto no sabe dónde vive la agenda.
  */
