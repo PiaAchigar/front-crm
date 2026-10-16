@@ -35,6 +35,8 @@ export type ServicioComprado = {
   appointmentStart: string | null;
   consumedAt: string | null;
   estado: EstadoSesion;
+  /** Zonas que se hacen en el turno de esta sesión (depilación). La API vieja no lo manda. */
+  zonasDelTurno?: string[] | null;
 };
 
 export type Compra = {
@@ -46,6 +48,8 @@ export type Compra = {
   /** Congelada al vender: si mañana se renombra el combo, esto no cambia. */
   description: string | null;
   sessionsTotal: number | null;
+  /** Zonas del pack de depilación; null si la compra no es de depilación. */
+  zonasDelPack?: { nombre: string; cantidad: number }[] | null;
   baseAmount: number;
   discountedAmount: number;
   finalAmount: number;

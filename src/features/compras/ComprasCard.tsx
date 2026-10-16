@@ -22,6 +22,7 @@ import {
   useImpactoDeBorrado,
 } from "./useCompras";
 import { VenderModal } from "./VenderModal";
+import { nombreDeLaLinea, textoDeZonasDelPack } from "../../lib/sesion-de-depilacion";
 
 /**
  * Qué hay que mandarle a la agenda para agendar ESTA línea — o `null` si
@@ -248,6 +249,9 @@ function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: stri
 
       {abierta && (
         <div className="mt-2 text-xs">
+          {compra.zonasDelPack && compra.zonasDelPack.length > 0 && (
+            <p className="mb-1 text-ink-soft">Zonas del pack: {textoDeZonasDelPack(compra.zonasDelPack)}</p>
+          )}
           {agruparServicios(compra.servicios).map((grupo, i) => (
             <div key={grupo.titulo ?? i} className="mt-2 first:mt-0">
               {grupo.titulo && (
@@ -269,7 +273,7 @@ function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: stri
                         {/* Sin nombre es depilación o una capacitación: no se
                             desglosan en servicios, y el guión lo dice mejor que
                             un hueco. */}
-                        <td className="py-1">{s.serviceName ?? "—"}</td>
+                        <td className="py-1">{nombreDeLaLinea(s, compra.sessionsTotal)}</td>
                         <td className="py-1">
                           {/* "A agendar" es la única que lleva a algún lado:
                               las demás describen algo que ya pasó. Suelto (sin
@@ -289,6 +293,9 @@ function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: stri
                         </td>
                         <td className="py-1">
                           {s.appointmentStart ? formatDateTime(s.appointmentStart) : "—"}
+                          {s.zonasDelTurno && (
+                            <span className="block text-ink-soft">{s.zonasDelTurno.join(", ")}</span>
+                          )}
                         </td>
                       </tr>
                     );
