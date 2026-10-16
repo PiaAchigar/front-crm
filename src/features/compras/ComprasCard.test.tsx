@@ -62,6 +62,7 @@ const comboPurchase: Compra = {
   ...pack,
   id: "cp-combo",
   description: "Combo1 - Prueba",
+  depilationComboId: null, // no es una compra de depilación (hereda "d1" de pack sólo por el spread)
   sessionsTotal: 1,
   consumidas: 1,
   perdidas: 0,

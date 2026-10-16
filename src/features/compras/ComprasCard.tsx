@@ -273,7 +273,7 @@ function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: stri
                         {/* Sin nombre es depilación o una capacitación: no se
                             desglosan en servicios, y el guión lo dice mejor que
                             un hueco. */}
-                        <td className="py-1">{nombreDeLaLinea(s, compra.sessionsTotal)}</td>
+                        <td className="py-1">{nombreDeLaLinea(s, compra)}</td>
                         <td className="py-1">
                           {/* "A agendar" es la única que lleva a algún lado:
                               las demás describen algo que ya pasó. Suelto (sin
