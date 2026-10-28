@@ -38,6 +38,11 @@ export function enlaceDeWhatsApp(telefono: string | null): string | null {
  * consulta citada. No `mailto:`: abre el programa de mail de la compu, y en
  * la del local no hay ninguno configurado, así que el botón no hacía nada.
  */
+/** La cuenta de Gmail del local. info@piubellaesteticapilates.com.ar es un
+ *  alias que entra acá. Va como `authuser` para que el redactor abra en esta
+ *  cuenta aunque el navegador tenga otras abiertas. */
+const GMAIL_DEL_LOCAL = "piubellatalar@gmail.com";
+
 export function enlaceDeGmail(
   email: string,
   { nombre, consulta }: { nombre: string | null; consulta: string | null },
@@ -47,6 +52,7 @@ export function enlaceDeGmail(
     ? "\n\n" + consulta.trim().split("\n").map((l) => `> ${l}`).join("\n")
     : "";
   const params = new URLSearchParams({
+    authuser: GMAIL_DEL_LOCAL,
     view: "cm",
     fs: "1",
     to: email,

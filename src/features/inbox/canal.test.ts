@@ -45,6 +45,8 @@ describe("enlaceDeGmail", () => {
     );
     expect(url.origin + url.pathname).toBe("https://mail.google.com/mail/");
     expect(url.searchParams.get("view")).toBe("cm");
+    // Siempre la cuenta del local, aunque el navegador tenga otras abiertas.
+    expect(url.searchParams.get("authuser")).toBe("piubellatalar@gmail.com");
     expect(url.searchParams.get("to")).toBe("ana@ejemplo.com");
     expect(url.searchParams.get("su")).toBe("Tu consulta en Piu Bella");
     expect(url.searchParams.get("body")).toBe(
