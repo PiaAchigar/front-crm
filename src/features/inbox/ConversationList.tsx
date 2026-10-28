@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Conversation } from "../../api/inbox";
-import { CHANNEL_META } from "../channels/channels.config";
+import { metaDeCanal } from "./canal";
 import { useConversationsList } from "./useInbox";
 
 const CHANNEL_OPTIONS = [
@@ -9,6 +9,7 @@ const CHANNEL_OPTIONS = [
   { value: "instagram", label: "Instagram" },
   { value: "facebook", label: "Facebook" },
   { value: "email", label: "Email" },
+  { value: "web", label: "Formulario de la web" },
 ];
 
 const STATUS_OPTIONS = [
@@ -91,7 +92,7 @@ export function ConversationList({
         )}
         <ul className="flex flex-col gap-1">
           {conversations.map((c: Conversation) => {
-            const meta = c.channel ? CHANNEL_META[c.channel] : null;
+            const meta = metaDeCanal(c.channel);
             return (
               <li key={c.id}>
                 <button

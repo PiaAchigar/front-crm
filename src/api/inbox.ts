@@ -5,7 +5,10 @@ export type Conversation = {
   id: string;
   contactId: string | null;
   contactName: string | null;
-  channel: ChannelType | null;
+  contactPhone: string | null;
+  contactEmail: string | null;
+  /** Además de los canales configurables, "web": el formulario de Contacto del sitio. */
+  channel: ChannelType | "web" | null;
   status: "open" | "closed" | null;
   assignedAgentId: string | null;
   messageCount: number | null;

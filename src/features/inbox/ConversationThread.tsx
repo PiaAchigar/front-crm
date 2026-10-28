@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchAgents } from "../../api/deals";
 import { fetchMessagesAfter, fetchMessagesBefore, type Message } from "../../api/inbox";
-import { CHANNEL_META } from "../channels/channels.config";
+import { CANAL_WEB, metaDeCanal } from "./canal";
+import { ResponderFueraDelInbox } from "./ResponderFueraDelInbox";
 import { useConversation, useSendMessage, useUpdateConversation } from "./useInbox";
 import { useSimulateInbound } from "../automation/useAutomations";
 import { can } from "../../lib/permissions";
@@ -118,7 +119,7 @@ export function ConversationThread({
     return <div className="p-4 text-sm text-red-600">No pudimos cargar la conversación.</div>;
 
   const { conversation } = data;
-  const meta = conversation.channel ? CHANNEL_META[conversation.channel] : null;
+  const meta = metaDeCanal(conversation.channel);
 
   function submit() {
     if (send.isPending) return;
@@ -236,7 +237,13 @@ export function ConversationThread({
         </div>
       </div>
 
-      {canEdit && (
+      {canEdit && conversation.channel === CANAL_WEB && (
+        <ResponderFueraDelInbox
+          telefono={conversation.contactPhone}
+          email={conversation.contactEmail}
+        />
+      )}
+      {canEdit && conversation.channel !== CANAL_WEB && (
         <div className="border-t border-surface-high p-3">
           <div className="flex gap-2">
             <input
