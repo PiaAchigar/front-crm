@@ -9,10 +9,16 @@ import {
   updateConversation,
 } from "../../api/inbox";
 
+/** Cada cuánto se vuelve a pedir la bandeja. Sin esto, una conversación
+ *  nueva (de la web o de WhatsApp) no aparecía hasta recargar la página. Con
+ *  la pestaña en segundo plano no se pide (default de react-query). */
+const BANDEJA_CADA_MS = 10_000;
+
 export function useConversationsList(filters: ConversationFilters) {
   return useQuery({
     queryKey: ["conversations", filters],
     queryFn: () => fetchConversations(filters),
+    refetchInterval: BANDEJA_CADA_MS,
   });
 }
 
