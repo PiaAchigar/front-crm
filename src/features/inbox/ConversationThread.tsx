@@ -241,6 +241,10 @@ export function ConversationThread({
         <ResponderFueraDelInbox
           telefono={conversation.contactPhone}
           email={conversation.contactEmail}
+          nombre={conversation.contactName}
+          consulta={
+            [...messages].reverse().find((m) => m.senderType === "contact")?.content ?? null
+          }
         />
       )}
       {canEdit && conversation.channel !== CANAL_WEB && (

@@ -1,4 +1,4 @@
-import { enlaceDeWhatsApp } from "./canal";
+import { enlaceDeGmail, enlaceDeWhatsApp } from "./canal";
 
 /**
  * Lo que va en lugar del cuadro de "Escribí un mensaje…" en una consulta del
@@ -8,9 +8,14 @@ import { enlaceDeWhatsApp } from "./canal";
 export function ResponderFueraDelInbox({
   telefono,
   email,
+  nombre,
+  consulta,
 }: {
   telefono: string | null;
   email: string | null;
+  nombre: string | null;
+  /** Lo último que escribió, para citarlo en el mail. */
+  consulta: string | null;
 }) {
   const whatsapp = enlaceDeWhatsApp(telefono);
   const boton =
@@ -20,16 +25,26 @@ export function ResponderFueraDelInbox({
       <p className="text-sm text-ink-soft">
         Esta consulta llegó por el formulario de la web: no se responde desde acá.
       </p>
-      <div className="mt-2 flex flex-wrap gap-2">
+      <div className="mt-2 flex flex-wrap items-center gap-2">
         {whatsapp && (
           <a href={whatsapp} target="_blank" rel="noreferrer" className={boton}>
             Responder por WhatsApp
           </a>
         )}
         {email && (
-          <a href={`mailto:${email}`} className={boton}>
+          <a
+            href={enlaceDeGmail(email, { nombre, consulta })}
+            target="_blank"
+            rel="noreferrer"
+            className={boton}
+          >
             Responder por mail
           </a>
+        )}
+        {/* Un teléfono que no se pudo convertir en enlace se muestra igual:
+            Laura lo puede copiar o llamar. */}
+        {!whatsapp && telefono && (
+          <span className="text-sm text-ink-soft">Teléfono que dejó: {telefono}</span>
         )}
       </div>
     </div>
