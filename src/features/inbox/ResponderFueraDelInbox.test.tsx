@@ -17,10 +17,11 @@ describe("ResponderFueraDelInbox — consultas del formulario de la web", () => 
       "href",
       "https://wa.me/5491155550001",
     );
-    expect(screen.getByRole("link", { name: /responder por mail/i })).toHaveAttribute(
-      "href",
-      expect.stringContaining("https://mail.google.com/mail/?view=cm"),
+    const mail = new URL(
+      screen.getByRole("link", { name: /responder por mail/i }).getAttribute("href")!,
     );
+    expect(mail.origin + mail.pathname).toBe("https://mail.google.com/mail/");
+    expect(mail.searchParams.get("to")).toBe("ana@ejemplo.com");
   });
 
   it("si el teléfono no se entiende, lo muestra igual para copiarlo", () => {
