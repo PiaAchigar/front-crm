@@ -23,7 +23,7 @@ import {
   useImpactoDeBorrado,
 } from "./useCompras";
 import { VenderModal } from "./VenderModal";
-import { AplazarDialog } from "./AplazarDialog";
+import { AplazarDialog, aaaaMmDdLocal } from "./AplazarDialog";
 import { nombreDeLaLinea, textoDeZonasDelPack } from "../../lib/sesion-de-depilacion";
 
 /**
@@ -31,10 +31,10 @@ import { nombreDeLaLinea, textoDeZonasDelPack } from "../../lib/sesion-de-depila
  * actual + 30 días, o hoy + 30 si la compra ya venció (sumarle 30 a una fecha
  * pasada podía dejarla todavía en el pasado, y el backend la rechaza).
  */
-function fechaInicialDeAplazo(expiresAt: string): string {
+export function fechaInicialDeAplazo(expiresAt: string): string {
   const base = new Date(expiresAt) > new Date() ? new Date(expiresAt) : new Date();
   base.setDate(base.getDate() + 30);
-  return base.toISOString().slice(0, 10);
+  return aaaaMmDdLocal(base);
 }
 
 /**

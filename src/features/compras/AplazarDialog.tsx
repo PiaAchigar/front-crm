@@ -1,10 +1,20 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
+/**
+ * `aaaa-mm-dd` con la fecha LOCAL. `toISOString()` da la fecha UTC y en
+ * Argentina, pasadas las 21:00, ya es "mañana": proponía un día de más.
+ */
+export function aaaaMmDdLocal(d: Date): string {
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
 /** Hoy + n días, en el formato `aaaa-mm-dd` que espera `<input type="date">`. */
 export function enDias(n: number): string {
   const d = new Date();
   d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+  return aaaaMmDdLocal(d);
 }
 
 /**
