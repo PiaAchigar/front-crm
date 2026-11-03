@@ -3,6 +3,8 @@ import {
   type Cotizacion,
   type MedioDePago,
   type OrigenVenta,
+  type PrecioDeVenta,
+  aplazarCompra,
   cancelarCompra,
   cobrarCompra,
   cotizarVenta,
@@ -87,6 +89,8 @@ export function useCotizacion(input: {
   /** A quién se le está cotizando: el backend lo necesita para resolver la
    *  tarifa de depilación (mujer/hombre) contra ESE cliente. */
   customerId: string | null;
+  /** Lista o efectivo. `undefined` donde el precio no se elige (depilación, paquete). */
+  precio?: PrecioDeVenta;
 }) {
   return useQuery({
     queryKey: ["cotizacion", input],
@@ -104,6 +108,7 @@ export function useCotizacion(input: {
             sessions: input.sessions,
             promotionId: input.promotionId,
             customerId: input.customerId!,
+            ...(input.precio ? { precio: input.precio } : {}),
           }),
     enabled:
       !!input.customerId &&
@@ -117,7 +122,9 @@ export function useCotizacion(input: {
 export function useVender(customerId: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: Cotizacion & { notes?: string | null; usarSaldo?: number }) =>
+    mutationFn: (
+      input: Cotizacion & { notes?: string | null; usarSaldo?: number; precio?: PrecioDeVenta },
+    ) =>
       venderCompra({ ...input, customerId: customerId! }),
     // Vender puede consumir saldo a favor, así que la card de saldo también
     // queda vieja.
@@ -201,6 +208,16 @@ export function useAplazarVencimiento(customerId: string | null) {
       aplazarVencimiento({ customerId: customerId!, ...input }),
     // El aviso de la pantalla de Clientes se arma de lo mismo: si no se
     // invalida, sigue nombrando a una clienta que ya no tiene nada vencido.
+    onSuccess: () => invalidarPlataDe(qc, customerId),
+  });
+}
+
+/** Aplaza el vencimiento de una compra. Refresca la lista: trae el vencimiento y el aplazo nuevos. */
+export function useAplazarCompra(customerId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: string; nuevaFecha: string; motivo?: string }) =>
+      aplazarCompra(input.id, input.nuevaFecha, input.motivo),
     onSuccess: () => invalidarPlataDe(qc, customerId),
   });
 }

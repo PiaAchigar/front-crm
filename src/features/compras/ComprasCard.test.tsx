@@ -162,6 +162,7 @@ let impacto = {
   borrable: true,
 };
 let borrados: string[] = [];
+let aplazados: { url: string; body: any }[] = [];
 let devoluciones: string[] = [];
 let cobros: { amount: number; method: string; wantsInvoice: boolean }[] = [];
 let chequeo = {
@@ -186,6 +187,7 @@ function wrapper({ children }: { children: ReactNode }) {
 beforeEach(() => {
   compras = [pack];
   borrados = [];
+  aplazados = [];
   devoluciones = [];
   cobros = [];
   chequeo = {
@@ -236,6 +238,10 @@ beforeEach(() => {
       }
       if (u.includes("/refund-check")) {
         return { ok: true, status: 200, json: async () => chequeo };
+      }
+      if (u.endsWith("/postpone")) {
+        aplazados.push({ url: u, body: JSON.parse(String(init?.body ?? "{}")) });
+        return { ok: true, status: 200, json: async () => ({ expiresAt: "2027-01-01T00:00:00.000Z" }) };
       }
       if (u.endsWith("/refund")) {
         devoluciones.push(u);
@@ -552,5 +558,61 @@ describe("ComprasCard — cobrar lo que falta", () => {
 
     await waitFor(() => expect(cobros).toHaveLength(1));
     expect(cobros[0]).toMatchObject({ amount: 66000, method: "cash", wantsInvoice: false });
+  });
+});
+
+
+describe("ComprasCard — aplazar vencimiento", () => {
+  const conVencimiento: Compra = { ...pack, expiresAt: "2099-03-10T15:00:00.000Z" };
+
+  it("muestra Aplazar vencimiento en compra con vencimiento", async () => {
+    compras = [conVencimiento];
+    render(<ComprasCard customerId="cu1" />, { wrapper });
+    expect(await screen.findByRole("button", { name: /aplazar vencimiento/i })).toBeInTheDocument();
+  });
+
+  it("también en una compra ya vencida", async () => {
+    compras = [{ ...pack, expiresAt: "2020-03-10T15:00:00.000Z" }];
+    render(<ComprasCard customerId="cu1" />, { wrapper });
+    expect(await screen.findByRole("button", { name: /aplazar vencimiento/i })).toBeInTheDocument();
+  });
+
+  it("no lo muestra en cancelada ni sin vencimiento", async () => {
+    compras = [
+      { ...pack, id: "sin-venc", description: "Sin vencimiento", expiresAt: null },
+      { ...pack, id: "cancelada", description: "Compra anulada", expiresAt: "2099-03-10T15:00:00.000Z", cancelledAt: "2026-09-09T15:00:00.000Z" },
+    ];
+    render(<ComprasCard customerId="cu1" />, { wrapper });
+    await screen.findByText("Compra anulada");
+    expect(screen.queryByRole("button", { name: /aplazar vencimiento/i })).not.toBeInTheDocument();
+  });
+
+  it("confirmar llama aplazarCompra con fecha y motivo", async () => {
+    compras = [conVencimiento];
+    render(<ComprasCard customerId="cu1" />, { wrapper });
+    await userEvent.click(await screen.findByRole("button", { name: /aplazar vencimiento/i }));
+    const fecha = screen.getByLabelText(/nueva fecha de vencimiento/i) as HTMLInputElement;
+    // Arranca en el vencimiento actual + 30 días.
+    expect(fecha.value).toBe("2099-04-09");
+    await userEvent.type(screen.getByLabelText(/motivo/i), "estuvo internada");
+    await userEvent.click(screen.getByRole("button", { name: /^aplazar$/i }));
+    await waitFor(() => expect(aplazados).toHaveLength(1));
+    expect(aplazados[0].url).toContain("/purchases/cp1/postpone");
+    expect(aplazados[0].body).toEqual({ nuevaFecha: "2099-04-09", motivo: "estuvo internada" });
+  });
+
+  it("lista los aplazos y marca el precio efectivo", async () => {
+    compras = [
+      {
+        ...conVencimiento,
+        priceMode: "efectivo",
+        aplazos: [
+          { desde: "2026-12-10T15:00:00.000Z", hasta: "2027-01-15T15:00:00.000Z", motivo: "estuvo internada", quien: "Laura", cuando: "2026-12-01T15:00:00.000Z" },
+        ],
+      },
+    ];
+    render(<ComprasCard customerId="cu1" />, { wrapper });
+    expect(await screen.findByText("Aplazado del 10/12/2026 al 15/01/2027: estuvo internada")).toBeInTheDocument();
+    expect(screen.getByText(/· precio efectivo/)).toBeInTheDocument();
   });
 });

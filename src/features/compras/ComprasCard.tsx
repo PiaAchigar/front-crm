@@ -16,13 +16,26 @@ import {
   useCancelarCompra,
   useChequeoDeDevolucion,
   useCompras,
+  useAplazarCompra,
   useDevolverPlata,
   useEliminarCompra,
   useEstadoDeCobro,
   useImpactoDeBorrado,
 } from "./useCompras";
 import { VenderModal } from "./VenderModal";
+import { AplazarDialog } from "./AplazarDialog";
 import { nombreDeLaLinea, textoDeZonasDelPack } from "../../lib/sesion-de-depilacion";
+
+/**
+ * Con qué fecha arranca el selector de "Aplazar vencimiento": el vencimiento
+ * actual + 30 días, o hoy + 30 si la compra ya venció (sumarle 30 a una fecha
+ * pasada podía dejarla todavía en el pasado, y el backend la rechaza).
+ */
+function fechaInicialDeAplazo(expiresAt: string): string {
+  const base = new Date(expiresAt) > new Date() ? new Date(expiresAt) : new Date();
+  base.setDate(base.getDate() + 30);
+  return base.toISOString().slice(0, 10);
+}
 
 /**
  * Qué hay que mandarle a la agenda para agendar ESTA línea — o `null` si
@@ -133,6 +146,8 @@ function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: stri
   const [cobrando, setCobrando] = useState(false);
   const [borrando, setBorrando] = useState(false);
   const [devolviendo, setDevolviendo] = useState(false);
+  const [aplazando, setAplazando] = useState(false);
+  const aplazar = useAplazarCompra(customerId);
   const cancelar = useCancelarCompra(customerId);
 
   const estado = estadoDeCompra(compra);
@@ -160,7 +175,16 @@ function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: stri
             {formatDateTimeToDate(compra.purchasedAt)}
             {compra.promotionName ? ` · Promo: ${compra.promotionName}` : ""}
             {compra.expiresAt ? ` · Vence ${formatDateTimeToDate(compra.expiresAt)}` : ""}
+            {compra.priceMode === "efectivo" ? " · precio efectivo" : ""}
           </p>
+          {/* Cada corrimiento del vencimiento, uno por línea: es lo que
+              responde "¿por qué esta compra vence en diciembre?" meses después. */}
+          {(compra.aplazos ?? []).map((a, i) => (
+            <p key={i} className="mt-0.5 text-xs italic text-ink-soft">
+              Aplazado del {formatDateTimeToDate(a.desde)} al {formatDateTimeToDate(a.hasta)}
+              {a.motivo ? `: ${a.motivo}` : ""}
+            </p>
+          ))}
         </div>
         <div className="flex items-center gap-2">
           <span className={`rounded-full px-2 py-0.5 text-xs ${estado.clase}`}>{estado.texto}</span>
@@ -222,6 +246,13 @@ function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: stri
         {!cancelada && compra.saldo > 0 && (
           <button className="text-primary hover:underline" onClick={() => setCobrando(true)}>
             Cobrar
+          </button>
+        )}
+        {/* También vencida: darle más plazo a una compra vencida es justo el
+            caso por el que existe (la clienta estuvo internada, etc.). */}
+        {!cancelada && compra.expiresAt && (
+          <button className="text-ink-soft hover:underline" onClick={() => setAplazando(true)}>
+            Aplazar vencimiento
           </button>
         )}
         {!cancelada && (
@@ -326,6 +357,37 @@ function FilaDeCompra({ compra, customerId }: { compra: Compra; customerId: stri
             setBorrando(false);
             setConfirmando(true);
           }}
+        />
+      )}
+
+      {aplazando && compra.expiresAt && (
+        <AplazarDialog
+          titulo="Aplazar vencimiento"
+          fechaInicial={fechaInicialDeAplazo(compra.expiresAt)}
+          resumen={
+            <>
+              <p className="mt-2 text-sm text-ink-soft">
+                Elegí hasta qué día puede usar esta compra.
+              </p>
+              <p className="mt-3 rounded-lg bg-surface-high px-4 py-3 text-xs text-ink-soft">
+                {compra.description ?? "Compra"} ·{" "}
+                {new Date(compra.expiresAt) < new Date() ? "venció" : "vence"} el{" "}
+                {formatDateTimeToDate(compra.expiresAt)}
+              </p>
+            </>
+          }
+          isPending={aplazar.isPending}
+          error={aplazar.error ? (aplazar.error as Error).message : null}
+          onClose={() => {
+            aplazar.reset();
+            setAplazando(false);
+          }}
+          onConfirm={(nuevaFecha, motivo) =>
+            aplazar.mutate(
+              { id: compra.id, nuevaFecha, motivo: motivo.trim() || undefined },
+              { onSuccess: () => setAplazando(false) },
+            )
+          }
         />
       )}
 

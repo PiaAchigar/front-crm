@@ -782,3 +782,70 @@ describe("VenderModal — un pack de catálogo se cotiza de a uno", () => {
     expect(await screen.findByLabelText(/sesiones/i)).toBeInTheDocument();
   });
 });
+
+
+describe("VenderModal — Lista o Efectivo", () => {
+  async function irACombosYElegir(nombre: RegExp) {
+    await userEvent.click(await screen.findByRole("tab", { name: /combos \/ packs/i }));
+    await userEvent.click(await screen.findByRole("button", { name: nombre }));
+  }
+
+  it("arranca en Lista, cotiza con ese precio y al pasar a Efectivo vuelve a cotizar", async () => {
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await irACombosYElegir(/combo facial premium/i);
+    const lista = await screen.findByRole("button", { name: "Lista" });
+    expect(lista).toHaveAttribute("aria-pressed", "true");
+    await waitFor(() => expect(cotizacionesPedidas.some((b) => b.precio === "lista")).toBe(true));
+
+    await userEvent.click(screen.getByRole("button", { name: "Efectivo" }));
+    expect(screen.getByRole("button", { name: "Efectivo" })).toHaveAttribute("aria-pressed", "true");
+    await waitFor(() => expect(cotizacionesPedidas.some((b) => b.precio === "efectivo")).toBe(true));
+
+    await userEvent.click(await screen.findByRole("button", { name: /^vender$/i }));
+    await waitFor(() => expect(cuerposDePost).toHaveLength(1));
+    expect(cuerposDePost[0].precio).toBe("efectivo");
+  });
+
+  it("con una promo elegida queda clavado en Efectivo y lo explica", async () => {
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await irACombosYElegir(/combo facial premium/i);
+    await userEvent.selectOptions(await screen.findByLabelText(/promo/i), "p1");
+
+    expect(await screen.findByText("Las promos se cobran en efectivo.")).toBeInTheDocument();
+    const efectivo = screen.getByRole("button", { name: "Efectivo" });
+    expect(efectivo).toHaveAttribute("aria-pressed", "true");
+    expect(efectivo).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Lista" })).toBeDisabled();
+    await waitFor(() =>
+      expect(cotizacionesPedidas.some((b) => b.promotionId === "p1" && b.precio === "efectivo")).toBe(true),
+    );
+
+    await userEvent.click(await screen.findByRole("button", { name: /^vender$/i }));
+    await waitFor(() => expect(cuerposDePost).toHaveLength(1));
+    expect(cuerposDePost[0].precio).toBe("efectivo");
+  });
+
+  it("en depilación no se elige y no se manda `precio`", async () => {
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await elegirCuerpoFull();
+    await screen.findByText("$195.000");
+    expect(screen.queryByRole("button", { name: "Lista" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Efectivo" })).not.toBeInTheDocument();
+    expect(cotizacionesPedidas.every((b) => !("precio" in b))).toBe(true);
+
+    await userEvent.click(screen.getByRole("button", { name: /^vender$/i }));
+    await waitFor(() => expect(cuerposDePost).toHaveLength(1));
+    expect(cuerposDePost[0]).not.toHaveProperty("precio");
+  });
+
+  it("en un paquete no se elige y no se manda `precio`", async () => {
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} />, { wrapper });
+    await userEvent.click(await screen.findByRole("tab", { name: /promos/i }));
+    await userEvent.click(await screen.findByText(/promo novia/i));
+    await screen.findByRole("button", { name: /^vender$/i });
+    expect(screen.queryByRole("button", { name: "Lista" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Efectivo" })).not.toBeInTheDocument();
+    await waitFor(() => expect(cotizacionesPedidas.some((b) => b.origen === "paquete")).toBe(true));
+    expect(cotizacionesPedidas.every((b) => !("precio" in b))).toBe(true);
+  });
+});

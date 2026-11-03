@@ -4,7 +4,7 @@ import { pesos } from "../../lib/compras-ui";
 import { formatDateTimeToDate } from "../../lib/format";
 import type { LoteDeSaldo } from "../../api/compras";
 import { useAplazarVencimiento, useSaldoDeCliente, useVencerSaldo } from "./useCompras";
-import { AplazarDialog } from "./AplazarDialog";
+import { AplazarDialog, enDias } from "./AplazarDialog";
 
 /**
  * El saldo a favor de la clienta, abierto en sus acreditaciones.
@@ -128,7 +128,25 @@ export function SaldoCard({ customerId }: { customerId: string }) {
 
       {aplazando && (
         <AplazarDialog
-          lotes={aplazando}
+          titulo={`Aplazar ${pesos(aplazando.reduce((a, l) => a + l.monto, 0))}`}
+          fechaInicial={enDias(90)}
+          resumen={
+            <>
+              <p className="mt-2 text-sm text-ink-soft">
+                {aplazando.length === 1
+                  ? "Elegí hasta qué día puede usar esta plata."
+                  : `Elegí hasta qué día puede usar estos ${aplazando.length} saldos.`}
+              </p>
+              <ul className="mt-3 space-y-1 rounded-lg bg-surface-high px-4 py-3 text-xs text-ink-soft">
+                {aplazando.map((l, i) => (
+                  <li key={l.id ?? i}>
+                    {pesos(l.monto)} — {l.detalle ?? "saldo a favor"}
+                    {l.venceEl ? ` · ${l.vencido ? "venció" : "vence"} el ${formatDateTimeToDate(l.venceEl)}` : ""}
+                  </li>
+                ))}
+              </ul>
+            </>
+          }
           isPending={aplazar.isPending}
           error={aplazar.error ? (aplazar.error as Error).message : null}
           onClose={() => {

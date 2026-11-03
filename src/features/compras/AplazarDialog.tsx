@@ -1,17 +1,18 @@
-import { useEffect, useRef, useState } from "react";
-import { pesos } from "../../lib/compras-ui";
-import { formatDateTimeToDate } from "../../lib/format";
-import type { LoteDeSaldo } from "../../api/compras";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 /** Hoy + n días, en el formato `aaaa-mm-dd` que espera `<input type="date">`. */
-function enDias(n: number): string {
+export function enDias(n: number): string {
   const d = new Date();
   d.setDate(d.getDate() + n);
   return d.toISOString().slice(0, 10);
 }
 
 /**
- * Elegir hasta cuándo vale un saldo a favor.
+ * Elegir hasta cuándo vale algo: un saldo a favor o una compra.
+ *
+ * Genérico: el que lo usa pone el título, el resumen de lo que se aplaza y la
+ * fecha con la que arranca el selector (un saldo, +90 días; una compra, su
+ * vencimiento + 30).
  *
  * **Una fecha, no una cantidad de meses** (decisión de Pia, 2026-09-10). El
  * caso real es "estuvo internada, dale hasta fin de año", no "sumale 60 días":
@@ -22,21 +23,27 @@ function enDias(n: number): string {
  * ofrece un día inválido es una trampa.
  */
 export function AplazarDialog({
-  lotes,
+  titulo,
+  resumen,
+  fechaInicial,
   isPending,
   error,
   onConfirm,
   onClose,
 }: {
-  lotes: LoteDeSaldo[];
+  titulo: string;
+  /** Qué se está aplazando: el texto y la lista que ve quien confirma. */
+  resumen: ReactNode;
+  /** `aaaa-mm-dd` con la que arranca el selector. */
+  fechaInicial: string;
   isPending: boolean;
   error: string | null;
   onConfirm: (nuevaFecha: string, motivo: string) => void;
   onClose: () => void;
 }) {
-  // Arranca en 3 meses, que es la vigencia normal: el caso más común es darle
-  // otro plazo entero, y así Laura sólo corrige si quiere otra cosa.
-  const [fecha, setFecha] = useState(enDias(90));
+  // Arranca en un plazo normal (lo decide quien abre el diálogo): el caso más
+  // común es darle otro plazo entero, y así Laura sólo corrige si quiere otra cosa.
+  const [fecha, setFecha] = useState(fechaInicial);
   const [motivo, setMotivo] = useState("");
   const fechaRef = useRef<HTMLInputElement>(null);
 
@@ -48,8 +55,6 @@ export function AplazarDialog({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [isPending, onClose]);
-
-  const total = lotes.reduce((a, l) => a + l.monto, 0);
 
   return (
     <div
@@ -64,22 +69,9 @@ export function AplazarDialog({
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id="aplazar-title" className="text-lg font-semibold text-ink">
-          Aplazar {pesos(total)}
+          {titulo}
         </h2>
-        <p className="mt-2 text-sm text-ink-soft">
-          {lotes.length === 1
-            ? "Elegí hasta qué día puede usar esta plata."
-            : `Elegí hasta qué día puede usar estos ${lotes.length} saldos.`}
-        </p>
-
-        <ul className="mt-3 space-y-1 rounded-lg bg-surface-high px-4 py-3 text-xs text-ink-soft">
-          {lotes.map((l, i) => (
-            <li key={l.id ?? i}>
-              {pesos(l.monto)} — {l.detalle ?? "saldo a favor"}
-              {l.venceEl ? ` · ${l.vencido ? "venció" : "vence"} el ${formatDateTimeToDate(l.venceEl)}` : ""}
-            </li>
-          ))}
-        </ul>
+        {resumen}
 
         <label className="mt-4 block text-sm">
           <span className="text-ink-soft">Nueva fecha de vencimiento</span>
@@ -105,7 +97,7 @@ export function AplazarDialog({
           {/* Queda pegado al origen del movimiento: dentro de tres meses es lo
               único que va a explicar por qué esa plata vence cuando vence. */}
           <span className="mt-1 block text-xs text-ink-soft">
-            Queda anotado junto al saldo, para saber después por qué se aplazó.
+            Queda anotado, para saber después por qué se aplazó.
           </span>
         </label>
 

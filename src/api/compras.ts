@@ -39,6 +39,18 @@ export type ServicioComprado = {
   zonasDelTurno?: string[] | null;
 };
 
+/** Cada vez que se corrió el vencimiento de una compra, del más viejo al más nuevo. */
+export type AplazoDeCompra = {
+  desde: string;
+  hasta: string;
+  motivo: string | null;
+  quien: string | null;
+  cuando: string;
+};
+
+/** Qué precio se le cobró: el de lista o el de efectivo. */
+export type PrecioDeVenta = "lista" | "efectivo";
+
 export type Compra = {
   id: string;
   customerId: string | null;
@@ -59,6 +71,10 @@ export type Compra = {
   expiresAt: string | null;
   cancelledAt: string | null;
   notes: string | null;
+  /** Con qué precio se vendió. `null` en las compras anteriores a que se eligiera. */
+  priceMode?: PrecioDeVenta | null;
+  /** Los aplazos de vencimiento, del más viejo al más nuevo. La API vieja no lo manda. */
+  aplazos?: AplazoDeCompra[];
   // Derivados, calculados por el backend en cada lectura.
   /** Si ya se le devolvió la plata de esta compra, y cuánta. */
   devuelta: boolean;
@@ -96,6 +112,8 @@ export type ItemDeCatalogo = {
   /** El descuento que aplica ese pack, para poder decirlo en pantalla. */
   packDescuentoPct: number | null;
   precioDesde: number;
+  /** El precio de efectivo; `null` si el item no tiene uno propio. */
+  precioEfectivo?: number | null;
   /** La descripción cargada en el catálogo. `null` si está vacía. */
   descripcion: string | null;
   /**
@@ -163,6 +181,8 @@ export function cotizarVenta(
         sessions: number;
         promotionId?: string | null;
         customerId: string;
+        /** Se omite donde el precio no se elige (depilación). */
+        precio?: PrecioDeVenta;
       }
     // Un paquete no tiene "origen" suelto: lo que lleva sale de la promo.
     | { origen: "paquete"; promotionId: string; customerId: string },
@@ -174,7 +194,12 @@ export function cotizarVenta(
 }
 
 export function venderCompra(
-  input: Cotizacion & { customerId: string; notes?: string | null; usarSaldo?: number },
+  input: Cotizacion & {
+    customerId: string;
+    notes?: string | null;
+    usarSaldo?: number;
+    precio?: PrecioDeVenta;
+  },
 ) {
   // `pagadoConSaldo` dice cuánto cubrió el saldo a favor, que es lo que el
   // paso de cobro necesita para saber qué falta.
@@ -232,6 +257,14 @@ export function devolverPlata(id: string, notes?: string | null) {
   return apiFetch<{ monto: number }>(`/api/crm/purchases/${id}/refund`, {
     method: "POST",
     body: JSON.stringify({ notes: notes ?? null }),
+  });
+}
+
+/** Corre para adelante el vencimiento de UNA compra. */
+export function aplazarCompra(id: string, nuevaFecha: string, motivo?: string) {
+  return apiFetch<{ expiresAt: string }>(`/api/crm/purchases/${id}/postpone`, {
+    method: "POST",
+    body: JSON.stringify({ nuevaFecha, motivo: motivo?.trim() ? motivo.trim() : undefined }),
   });
 }
 

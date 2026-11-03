@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type {
   ItemDeCatalogo,
   OrigenVenta,
+  PrecioDeVenta,
   PromoVendible,
 } from "../../api/compras";
 import { pesos, saldoQueEntra } from "../../lib/compras-ui";
@@ -83,6 +84,7 @@ export function VenderModal({
   const [promoDesplegada, setPromoDesplegada] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [usarSaldo, setUsarSaldo] = useState(false);
+  const [precioElegido, setPrecioElegido] = useState<PrecioDeVenta>("lista");
   // Una vez vendido, el modal NO cierra: pasa a cobrar. La venta ya está
   // hecha, así que esto sólo decide si se cobra ahora o después.
   const [vendida, setVendida] = useState<{
@@ -92,6 +94,13 @@ export function VenderModal({
     minimo: number;
   } | null>(null);
 
+  // Lista / Efectivo se elige salvo en depilación y en un paquete, que van
+  // siempre en efectivo. Con una promo elegida el precio queda clavado en
+  // efectivo: la API rechaza lista con promo.
+  const muestraPrecio = !!elegido && !paqueteElegido && elegido.origen !== "depilacion";
+  const conPromo = !paqueteElegido && promotionId !== null;
+  const precioFinal: PrecioDeVenta = conPromo ? "efectivo" : precioElegido;
+
   const cotizacion = useCotizacion({
     origen: paqueteElegido
       ? "paquete"
@@ -100,6 +109,7 @@ export function VenderModal({
     sessions: sesiones,
     promotionId: paqueteElegido ? paqueteElegido.id : promotionId,
     customerId,
+    precio: muestraPrecio ? precioFinal : undefined,
   });
 
   useEffect(() => {
@@ -269,7 +279,12 @@ export function VenderModal({
   function handleVender() {
     if (!q) return;
     vender.mutate(
-      { ...q, notes: notes.trim() || null, usarSaldo: conSaldo },
+      {
+        ...q,
+        notes: notes.trim() || null,
+        usarSaldo: conSaldo,
+        ...(muestraPrecio ? { precio: precioFinal } : {}),
+      },
       {
         onSuccess: (compra) => {
           const yaPagado = compra.pagadoConSaldo ?? 0;
@@ -592,6 +607,38 @@ export function VenderModal({
                       El pack es de {elegido?.packSesiones} sesiones. Con{" "}
                       {sesiones} se venden al precio de lista, sin descuento.
                     </p>
+                  )}
+
+                  {muestraPrecio && (
+                    <div>
+                      <span className="text-sm text-ink-soft">Precio</span>
+                      <div className="mt-1 flex items-center gap-2">
+                        {(["lista", "efectivo"] as const).map((modo) => {
+                          const activo = precioFinal === modo;
+                          return (
+                            <button
+                              key={modo}
+                              type="button"
+                              disabled={conPromo}
+                              aria-pressed={activo}
+                              onClick={() => setPrecioElegido(modo)}
+                              className={[
+                                "flex-1 rounded-lg border py-2 text-sm transition-colors",
+                                activo
+                                  ? "border-primary bg-primary/10 font-medium text-primary"
+                                  : "border-surface-highest text-ink-soft hover:bg-surface-high",
+                                conPromo ? "cursor-not-allowed opacity-70" : "",
+                              ].join(" ")}
+                            >
+                              {modo === "lista" ? "Lista" : "Efectivo"}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {conPromo && (
+                        <p className="mt-1 text-xs text-ink-soft">Las promos se cobran en efectivo.</p>
+                      )}
+                    </div>
                   )}
 
                   {/* Sólo si hay promos vigentes. Un desplegable con una única
