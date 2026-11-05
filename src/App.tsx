@@ -8,6 +8,7 @@ import { AutomationPage } from "./features/automation/AutomationPage";
 import { ChannelsPage } from "./features/channels/ChannelsPage";
 import { ConfigureLLMPage } from "./features/ai-config/ConfigureLLMPage";
 import { useCrmSession } from "./lib/session";
+import { isEmbedded } from "./lib/embed";
 import { destinoDeArranque, rutaGuardada, useRecordarRuta } from "./lib/ruta-recordada";
 
 /** Una clave por app: el CRM y la agenda no comparten origin, pero sí el hábito. */
@@ -44,7 +45,9 @@ export default function App() {
   if (!ready) {
     return (
       <div className="flex h-[100dvh] items-center justify-center text-sm text-ink-soft">
-        Conectando con el panel…
+        {isEmbedded
+          ? "Conectando con el panel…"
+          : "Abrí el CRM desde el panel de Sistema Central para iniciar sesión."}
       </div>
     );
   }
