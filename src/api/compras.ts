@@ -138,7 +138,21 @@ export type PromoVendible = {
   destinos: { tipo: "servicio" | "combo" | "depilacion"; id: string; cantidad: number }[];
 };
 
+/** Una zona de depilación para vender suelta. El precio es el de una zona
+ *  sola: el total de varias lo da la cotización, que abarata la 2ª y la 3ª. */
+export type ZonaVendible = {
+  id: string;
+  nombre: string;
+  precioMujer: number;
+  precioHombre: number;
+  /** Zonas que no se pueden vender junto con esta. */
+  excluye: string[];
+};
+
 export type Catalogo = {
+  /** Opcional: una API sin desplegar todavía no la manda. */
+  zonas?: ZonaVendible[];
+  packDeZonas?: { sesiones: number; descuentoPct: number };
   combos: ItemDeCatalogo[];
   depilacion: ItemDeCatalogo[];
   servicios: ItemDeCatalogo[];
@@ -160,6 +174,8 @@ export type Cotizacion = {
   depilationComboId: string | null;
   serviceId: string | null;
   trainingId: string | null;
+  /** Sólo en zonas sueltas: la API resuelve la compra a partir de estas zonas. */
+  zonaIds?: string[];
   /** Sólo viene en `true` cuando se cotizó un paquete: los cuatro orígenes de
    *  arriba llegan en `null` y no hay que rearmar nada para vender. */
   esPaquete?: boolean;
@@ -184,6 +200,7 @@ export function cotizarVenta(
         /** Se omite donde el precio no se elige (depilación). */
         precio?: PrecioDeVenta;
       }
+    | { origen: "zonas"; zonaIds: string[]; sessions: number; customerId: string }
     // Un paquete no tiene "origen" suelto: lo que lleva sale de la promo.
     | { origen: "paquete"; promotionId: string; customerId: string },
 ): Promise<Cotizacion> {

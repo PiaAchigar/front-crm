@@ -4,6 +4,7 @@ import type {
   OrigenVenta,
   PrecioDeVenta,
   PromoVendible,
+  ZonaVendible,
 } from "../../api/compras";
 import { pesos, saldoQueEntra } from "../../lib/compras-ui";
 import { promosQueAplican } from "../../lib/promo-aplica";
@@ -21,7 +22,7 @@ import { CobrarPaso } from "./CobrarPaso";
  */
 
 /**
- * Las cinco solapas, en el orden en que Laura las recorre.
+ * Las seis solapas, en el orden en que Laura las recorre.
  *
  * "Combos / Packs" junta los combos y los packs de las áreas de estética,
  * medicina y masajes. La depilación definitiva va aparte —tiene su propio
@@ -30,6 +31,7 @@ import { CobrarPaso } from "./CobrarPaso";
  */
 const SOLAPAS: { clave: SolapaClave; titulo: string }[] = [
   { clave: "depilacion", titulo: "Pack/Combos Depi Def" },
+  { clave: "zonas", titulo: "Zonas" },
   { clave: "combos", titulo: "Combos / Packs" },
   { clave: "servicios", titulo: "Servicios" },
   { clave: "capacitaciones", titulo: "Capacitaciones" },
@@ -49,7 +51,10 @@ type Catalogo3 = {
 
 // "promos" no sale de `catalogo[solapa]` como las otras cuatro: la lista de
 // esa solapa es `catalogo.promociones`, con su propio renderizado.
-type SolapaClave = keyof Catalogo3 | "promos";
+type SolapaClave = keyof Catalogo3 | "promos" | "zonas";
+
+/** Lo que se muestra en el panel de la derecha para las zonas tildadas. */
+const ID_ZONAS_SUELTAS = "zonas-sueltas";
 
 export function VenderModal({
   customerId,
@@ -74,6 +79,9 @@ export function VenderModal({
   const [elegido, setElegido] = useState<ItemDeCatalogo | null>(null);
   const [sesiones, setSesiones] = useState(1);
   const [promotionId, setPromotionId] = useState<string | null>(null);
+  // Las zonas tildadas en la solapa Zonas, en el orden en que se eligieron. Hay
+  // alguna sólo mientras `elegido` es el item armado con ellas.
+  const [zonasElegidas, setZonasElegidas] = useState<ZonaVendible[]>([]);
   // Un paquete se vende entero, de un saque: no convive con un item suelto
   // elegido. Los dos puestos a la vez es un estado imposible.
   const [paqueteElegido, setPaqueteElegido] = useState<PromoVendible | null>(
@@ -104,8 +112,11 @@ export function VenderModal({
   const cotizacion = useCotizacion({
     origen: paqueteElegido
       ? "paquete"
-      : ((elegido?.origen ?? null) as OrigenVenta | null),
+      : zonasElegidas.length > 0
+        ? "zonas"
+        : ((elegido?.origen ?? null) as OrigenVenta | null),
     id: elegido?.id ?? null,
+    zonaIds: zonasElegidas.map((z) => z.id),
     sessions: sesiones,
     promotionId: paqueteElegido ? paqueteElegido.id : promotionId,
     customerId,
@@ -123,11 +134,17 @@ export function VenderModal({
   const lista = useMemo(() => {
     // La solapa Promos no lista `catalogo.promociones` acá: se renderiza
     // aparte, porque un paquete y un descuento se tocan distinto.
-    if (solapa === "promos") return [];
+    if (solapa === "promos" || solapa === "zonas") return [];
     const items = catalogo?.[solapa] ?? [];
     const q = busqueda.trim().toLowerCase();
     return q ? items.filter((i) => i.nombre.toLowerCase().includes(q)) : items;
   }, [catalogo, solapa, busqueda]);
+
+  const zonasFiltradas = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    const zonas = catalogo?.zonas ?? [];
+    return q ? zonas.filter((z) => z.nombre.toLowerCase().includes(q)) : zonas;
+  }, [catalogo, busqueda]);
 
   // El mismo buscador filtra las promos por nombre cuando la solapa activa es
   // "Promos". Dejarlo ahí sin hacer nada repetiría en chiquito el problema que
@@ -204,6 +221,7 @@ export function VenderModal({
     // Elegir un item suelto suelta el paquete elegido: los dos puestos a la
     // vez es un estado imposible que termina en una venta mal armada.
     setPaqueteElegido(null);
+    setZonasElegidas([]);
     setElegido(item);
     // Las del pack por defecto: es la venta que tiene descuento, y ofrecer
     // otro número sería ofrecer un precio peor sin explicar por qué.
@@ -222,10 +240,39 @@ export function VenderModal({
     );
   }
 
+  // Zonas: se tildan de a varias y el panel de la derecha las trata como un
+  // item de depilación más (mismo aviso de tarifa, sesiones y sin promo). El
+  // precio lo da la cotización, que abarata la 2ª y la 3ª zona.
+  function tildarZona(zona: ZonaVendible) {
+    const yaEstaba = zonasElegidas.some((z) => z.id === zona.id);
+    const zonas = yaEstaba
+      ? zonasElegidas.filter((z) => z.id !== zona.id)
+      : [...zonasElegidas, zona];
+    if (zonasElegidas.length === 0) setSesiones(1);
+    setPaqueteElegido(null);
+    setPromotionId(null);
+    setZonasElegidas(zonas);
+    setElegido(
+      zonas.length === 0
+        ? null
+        : {
+            origen: "depilacion",
+            id: ID_ZONAS_SUELTAS,
+            nombre: "Zonas sueltas",
+            packSesiones: catalogo?.packDeZonas?.sesiones ?? null,
+            packDescuentoPct: catalogo?.packDeZonas?.descuentoPct ?? null,
+            precioDesde: 0,
+            descripcion: null,
+            desglose: zonas.map((z) => ({ nombre: z.nombre, cantidad: 1 })),
+          },
+    );
+  }
+
   // Paquete: una sola fila, se toca y queda elegida entera. Se vende de un
   // saque, sin sesiones a elegir.
   function elegirPaquete(promo: PromoVendible) {
     setElegido(null);
+    setZonasElegidas([]);
     setPaqueteElegido(promo);
   }
 
@@ -389,6 +436,51 @@ export function VenderModal({
             <div className="min-h-0 flex-1 overflow-y-auto">
               {isLoading ? (
                 <p className="text-sm text-ink-soft">Cargando el catálogo…</p>
+              ) : solapa === "zonas" ? (
+                zonasFiltradas.length === 0 ? (
+                  <p className="text-sm text-ink-soft">
+                    {busqueda.trim()
+                      ? "Nada que coincida con la búsqueda."
+                      : "Todavía no hay zonas cargadas."}
+                  </p>
+                ) : (
+                  <ul className="flex flex-col gap-1">
+                    {zonasFiltradas.map((zona) => {
+                      const tildada = zonasElegidas.some((z) => z.id === zona.id);
+                      const choca = zonasElegidas.find((z) => zona.excluye.includes(z.id));
+                      return (
+                        <li key={zona.id}>
+                          <label
+                            className={[
+                              "flex items-center gap-3 rounded border px-3 py-2 text-sm",
+                              tildada ? "border-primary bg-surface-high" : "border-transparent",
+                              choca ? "opacity-60" : "cursor-pointer hover:bg-surface-high",
+                            ].join(" ")}
+                          >
+                            <input
+                              type="checkbox"
+                              className="accent-primary"
+                              checked={tildada}
+                              disabled={!!choca}
+                              onChange={() => tildarZona(zona)}
+                            />
+                            <span className="min-w-0 flex-1 text-ink">
+                              {zona.nombre}
+                              {choca && (
+                                <span className="block text-xs text-ink-soft">
+                                  No se combina con {choca.nombre}
+                                </span>
+                              )}
+                            </span>
+                            <span className="shrink-0 text-xs text-ink-soft">
+                              {pesos(sexo === "hombre" ? zona.precioHombre : zona.precioMujer)}
+                            </span>
+                          </label>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )
               ) : solapa === "promos" ? (
                 promosFiltradas.length === 0 ? (
                   // Se distingue "no hay ninguna cargada" de "el buscador no

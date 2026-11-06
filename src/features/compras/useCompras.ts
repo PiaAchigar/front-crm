@@ -82,8 +82,10 @@ export function useCatalogoVendible(enabled: boolean) {
  * promo el precio tiene que actualizarse solo, sin que nadie apriete nada.
  */
 export function useCotizacion(input: {
-  origen: OrigenVenta | "paquete" | null;
+  origen: OrigenVenta | "paquete" | "zonas" | null;
   id: string | null;
+  /** Sólo con origen "zonas". */
+  zonaIds?: string[];
   sessions: number;
   promotionId: string | null;
   /** A quién se le está cotizando: el backend lo necesita para resolver la
@@ -95,7 +97,14 @@ export function useCotizacion(input: {
   return useQuery({
     queryKey: ["cotizacion", input],
     queryFn: () =>
-      input.origen === "paquete"
+      input.origen === "zonas"
+        ? cotizarVenta({
+            origen: "zonas",
+            zonaIds: input.zonaIds!,
+            sessions: input.sessions,
+            customerId: input.customerId!,
+          })
+        : input.origen === "paquete"
         // Un paquete no tiene "origen" suelto: lo que lleva sale de la promo.
         ? cotizarVenta({
             origen: "paquete",
@@ -112,7 +121,9 @@ export function useCotizacion(input: {
           }),
     enabled:
       !!input.customerId &&
-      (input.origen === "paquete"
+      (input.origen === "zonas"
+        ? (input.zonaIds?.length ?? 0) > 0 && input.sessions > 0
+        : input.origen === "paquete"
         ? !!input.promotionId
         : !!input.origen && !!input.id && input.sessions > 0),
     retry: false,

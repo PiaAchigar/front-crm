@@ -100,6 +100,12 @@ const catalogo: any = {
     { origen: "servicio", id: "s-limpieza", nombre: "Limpieza de cutis", packSesiones: null, packDescuentoPct: null, precioDesde: 45000, descripcion: null, desglose: [] },
   ],
   promociones: [...PROMOS_BASE],
+  zonas: [
+    { id: "z-axila", nombre: "Axila", precioMujer: 12000, precioHombre: 15000, excluye: [] },
+    { id: "z-pierna", nombre: "Pierna entera", precioMujer: 30000, precioHombre: 38000, excluye: ["z-media"] },
+    { id: "z-media", nombre: "Media pierna", precioMujer: 20000, precioHombre: 25000, excluye: ["z-pierna"] },
+  ],
+  packDeZonas: { sesiones: 3, descuentoPct: 15 },
 };
 
 let cuerposDePost: any[] = [];
@@ -110,7 +116,7 @@ let cobros: any[] = [];
 // se ve (spec de la Task 11 y hallazgos del revisor sobre exclusión mutua).
 let cotizacionesPedidas: any[] = [];
 
-function cotizacionDe(body: { sessions: number; promotionId?: string | null }) {
+function cotizacionDe(body: { sessions: number; promotionId?: string | null; zonaIds?: string[] }) {
   const base = 65000 * body.sessions;
   const desc = body.sessions === 3 ? 166000 : base;
   return {
@@ -121,6 +127,7 @@ function cotizacionDe(body: { sessions: number; promotionId?: string | null }) {
     finalAmount: body.promotionId ? Math.round(desc * 0.9) : desc,
     promotionId: body.promotionId ?? null,
     expiresAt: null,
+    ...(body.zonaIds ? { zonaIds: body.zonaIds } : {}),
     comboId: null,
     depilationComboId: "d1",
     serviceId: null,
@@ -847,5 +854,75 @@ describe("VenderModal — Lista o Efectivo", () => {
     expect(screen.queryByRole("button", { name: "Efectivo" })).not.toBeInTheDocument();
     await waitFor(() => expect(cotizacionesPedidas.some((b) => b.origen === "paquete")).toBe(true));
     expect(cotizacionesPedidas.every((b) => !("precio" in b))).toBe(true);
+  });
+});
+
+describe("VenderModal — zonas sueltas", () => {
+  async function abrirZonas(props: { sexo?: "mujer" | "hombre" } = {}) {
+    render(<VenderModal customerId="cu1" saldoAFavor={0} onClose={() => {}} {...props} />, { wrapper });
+    await userEvent.click(await screen.findByRole("tab", { name: "Zonas" }));
+  }
+
+  it("lista las zonas con su precio", async () => {
+    await abrirZonas();
+    expect(await screen.findByRole("checkbox", { name: /axila/i })).toBeInTheDocument();
+    expect(screen.getByText("$12.000")).toBeInTheDocument();
+  });
+
+  it("a un hombre le muestra su precio", async () => {
+    await abrirZonas({ sexo: "hombre" });
+    await screen.findByRole("checkbox", { name: /axila/i });
+    expect(screen.getByText("$15.000")).toBeInTheDocument();
+  });
+
+  it("cotiza lo que se va tildando, de a una sesión", async () => {
+    await abrirZonas();
+    await userEvent.click(await screen.findByRole("checkbox", { name: /axila/i }));
+    await userEvent.click(screen.getByRole("checkbox", { name: /pierna entera/i }));
+    await waitFor(() =>
+      expect(cotizacionesPedidas.at(-1)).toEqual({
+        origen: "zonas",
+        zonaIds: ["z-axila", "z-pierna"],
+        sessions: 1,
+        customerId: "cu1",
+      }),
+    );
+  });
+
+  it("apaga la zona que no se puede combinar con una ya elegida, y dice por qué", async () => {
+    await abrirZonas();
+    await userEvent.click(await screen.findByRole("checkbox", { name: /pierna entera/i }));
+    expect(screen.getByRole("checkbox", { name: /media pierna/i })).toBeDisabled();
+    expect(screen.getByText(/no se combina con pierna entera/i)).toBeInTheDocument();
+  });
+
+  it("destildar la última vuelve al estado vacío", async () => {
+    await abrirZonas();
+    const axila = await screen.findByRole("checkbox", { name: /axila/i });
+    await userEvent.click(axila);
+    await screen.findByText("Zonas sueltas");
+    await userEvent.click(axila);
+    expect(await screen.findByText(/elegí qué le vas a vender/i)).toBeInTheDocument();
+  });
+
+  it("vende mandando las zonas tal como vinieron de la cotización", async () => {
+    await abrirZonas();
+    await userEvent.click(await screen.findByRole("checkbox", { name: /axila/i }));
+    await waitFor(() => expect(cotizacionesPedidas.length).toBeGreaterThan(0));
+    const boton = await screen.findByRole("button", { name: /^vender/i });
+    await waitFor(() => expect(boton).toBeEnabled());
+    await userEvent.click(boton);
+    await waitFor(() => expect(cuerposDePost).toHaveLength(1));
+    expect(cuerposDePost[0].zonaIds).toEqual(["z-axila"]);
+  });
+
+  it("elegir otra cosa suelta las zonas", async () => {
+    await abrirZonas();
+    await userEvent.click(await screen.findByRole("checkbox", { name: /axila/i }));
+    await userEvent.click(screen.getByRole("tab", { name: "Pack/Combos Depi Def" }));
+    await elegirCuerpoFull();
+    await waitFor(() => expect(cotizacionesPedidas.at(-1)).toMatchObject({ origen: "depilacion", id: "d1" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Zonas" }));
+    expect(screen.getByRole("checkbox", { name: /axila/i })).not.toBeChecked();
   });
 });
