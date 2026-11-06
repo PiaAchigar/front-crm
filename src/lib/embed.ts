@@ -5,11 +5,14 @@ import { setAuthToken } from "./auth-token";
 /**
  * Modo embebido: el CRM correría dentro de un <iframe> del dashboard (todavía
  * no está wireado en front-dashboard — eso queda para cuando el dashboard sume
- * la sección CRM). Se activa con `?embed=1` en la URL.
+ * la sección CRM). Se activa con `?embed=1` en la URL, o al estar dentro de un
+ * iframe: el parámetro se pierde al navegar, y si se recarga sólo el iframe en
+ * una subruta ya no está.
  */
 export const isEmbedded =
   typeof window !== "undefined" &&
-  new URLSearchParams(window.location.search).get("embed") === "1";
+  (window.self !== window.top ||
+    new URLSearchParams(window.location.search).get("embed") === "1");
 
 export const DASHBOARD_ORIGIN = import.meta.env.VITE_DASHBOARD_ORIGIN as
   | string

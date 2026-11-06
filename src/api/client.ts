@@ -1,8 +1,6 @@
 import { getAuthToken } from "../lib/auth-token";
 
 const API_URL = import.meta.env.VITE_API_URL as string;
-/** Fallback de auth para correr el CRM standalone en dev (sin el dashboard). */
-const API_KEY = import.meta.env.VITE_API_KEY as string | undefined;
 
 /** Error de una respuesta HTTP no-OK. Lleva el `status` para que la UI pueda
  *  distinguir casos (ej: 404 "no existe" vs 500 "error del servidor"). */
@@ -34,12 +32,8 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   const token = getAuthToken();
 
   // Embebido en el dashboard: el host manda el JWT del staff (rol real) por
-  // postMessage → header `Authorization`. Standalone (dev): cae al API key.
-  const auth: Record<string, string> = token
-    ? { Authorization: `Bearer ${token}` }
-    : API_KEY
-      ? { "x-api-key": API_KEY }
-      : {};
+  // postMessage → header `Authorization`.
+  const auth: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
