@@ -83,3 +83,40 @@ export function pedirAgendar(datos: PrefillAgendar): void {
   if (!isEmbedded) return;
   window.parent.postMessage({ type: AGENDAR_MSG, ...datos }, DASHBOARD_ORIGIN ?? "*");
 }
+
+const AVISOS_ESTADO_MSG = "piubella:crm:avisos-estado";
+const AVISOS_SILENCIAR_MSG = "piubella:crm:avisos-silenciar";
+const VIENDO_MSG = "piubella:crm:viendo";
+
+/**
+ * El dashboard le cuenta al CRM si los avisos de mensajes nuevos están
+ * silenciados, para que el botón del Inbox diga lo correcto. Mismo canal y
+ * misma verificación de origin que el handshake del token. Devuelve la
+ * función para dejar de escuchar.
+ */
+export function escucharEstadoAvisos(cb: (silenciado: boolean) => void): () => void {
+  function onMessage(e: MessageEvent) {
+    if (DASHBOARD_ORIGIN && e.origin !== DASHBOARD_ORIGIN) return;
+    const data = e.data as { type?: string; silenciado?: unknown } | null;
+    if (data?.type === AVISOS_ESTADO_MSG && typeof data.silenciado === "boolean") {
+      cb(data.silenciado);
+    }
+  }
+  window.addEventListener("message", onMessage);
+  return () => window.removeEventListener("message", onMessage);
+}
+
+/** Le pide al dashboard silenciar (o reactivar) los avisos. Fuera del iframe no hace nada. */
+export function pedirSilenciarAvisos(silenciado: boolean): void {
+  if (!isEmbedded) return;
+  window.parent.postMessage(
+    { type: AVISOS_SILENCIAR_MSG, silenciado },
+    DASHBOARD_ORIGIN ?? "*",
+  );
+}
+
+/** Le avisa al dashboard qué conversación está abierta (o `null`), para no avisar de esa. */
+export function avisarConversacionAbierta(id: string | null): void {
+  if (!isEmbedded) return;
+  window.parent.postMessage({ type: VIENDO_MSG, conversationId: id }, DASHBOARD_ORIGIN ?? "*");
+}
