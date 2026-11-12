@@ -139,7 +139,8 @@ export function ConversationThread({
       {
         onSuccess: (msg) => {
           setDraft("");
-          setMessages((prev) => [...prev, msg]);
+          // El polling pudo traerlo antes de que vuelva el envío: no repetirlo.
+          setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
           setNewestCursor(`${msg.createdAt}_${msg.id}`);
           requestAnimationFrame(() => {
             const el = scrollRef.current;
