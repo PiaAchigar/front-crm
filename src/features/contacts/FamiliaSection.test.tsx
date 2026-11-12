@@ -166,17 +166,33 @@ describe("FamiliaSection", () => {
       });
     });
 
-    it("409: avisa que tienen DNI o CUIT distintos", async () => {
+    it("409: muestra el mensaje que manda la API (DNI distinto)", async () => {
       preparar();
       vi.spyOn(api, "fetchUnionPreview").mockResolvedValue({
         conversaciones: 0, turnos: 0, pagos: 0, facturas: 0, compras: 0, aCargo: 0, pierdeTitular: false,
       });
-      vi.spyOn(api, "unirContactos").mockRejectedValue(new ApiError(409, "DNI distinto"));
+      vi.spyOn(api, "unirContactos").mockRejectedValue(
+        new ApiError(409, "No se pueden unir: tienen DNI o CUIT distintos"),
+      );
       await hastaElPreview();
       await userEvent.click(await screen.findByRole("button", { name: "Unir fichas" }));
       expect(
         await screen.findByText("No se pueden unir: tienen DNI o CUIT distintos"),
       ).toBeInTheDocument();
+    });
+
+    it("409 por el mismo turno: no dice DNI, muestra el mensaje de la API", async () => {
+      preparar();
+      vi.spyOn(api, "fetchUnionPreview").mockResolvedValue({
+        conversaciones: 0, turnos: 0, pagos: 0, facturas: 0, compras: 0, aCargo: 0, pierdeTitular: false,
+      });
+      vi.spyOn(api, "unirContactos").mockRejectedValue(
+        new ApiError(409, "Las dos fichas tienen el mismo turno. Cancelá uno antes de unir"),
+      );
+      await hastaElPreview();
+      await userEvent.click(await screen.findByRole("button", { name: "Unir fichas" }));
+      expect(await screen.findByText(/Cancelá uno antes de unir/)).toBeInTheDocument();
+      expect(screen.queryByText(/DNI o CUIT/)).not.toBeInTheDocument();
     });
   });
 });

@@ -1,3 +1,4 @@
+import { candidatosPorRevisar } from "./candidatosPorRevisar";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchAgents } from "../../api/deals";
@@ -211,10 +212,7 @@ export function ConversationThread({
         <BarraPorRevisar
           porRevisar={porRevisar}
           conversationId={conversationId}
-          candidatos={[
-            { id: contactId, name: conversation.contactName },
-            ...(vinculos?.compartenNumero ?? []),
-          ]}
+          candidatos={candidatosPorRevisar({ id: contactId, name: conversation.contactName }, vinculos)}
           canEdit={canEdit}
           onResolved={(id) => onResolved?.(id)}
         />

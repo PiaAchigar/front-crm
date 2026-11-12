@@ -22,8 +22,10 @@ function extras(p: UnionPreview): string | null {
 }
 
 function mensajeDeError(e: unknown): string {
+  const msg = (e as Error).message?.trim();
+  if (msg) return msg;
   if (e instanceof ApiError && e.status === 409) return MSG_409;
-  return (e as Error).message;
+  return "No se pudo unir";
 }
 
 /** Une una ficha duplicada (B) dentro de la actual (A): A queda, B se borra. */
