@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as api from "../../api/inbox";
+import * as contactsApi from "../../api/contacts";
 import { BarraPorRevisar } from "./BarraPorRevisar";
 import { ResolverContactoModal } from "./ResolverContactoModal";
 
@@ -86,34 +87,76 @@ describe("ResolverContactoModal", () => {
 describe("BarraPorRevisar", () => {
   afterEach(() => vi.restoreAllMocks());
 
+  const dos = candidatos.slice(0, 2);
+  const preview = {
+    conversaciones: 1, turnos: 2, pagos: 0, facturas: 0, compras: 0, aCargo: 0, pierdeTitular: false,
+  };
+  const base = { conversationId: "C1", contactId: "A", canEdit: true };
+
+  function mocks() {
+    vi.spyOn(contactsApi, "fetchContacts").mockResolvedValue({ items: [], total: 0 } as never);
+    vi.spyOn(contactsApi, "fetchVinculos").mockResolvedValue({ titular: null, aCargo: [], compartenNumero: [] } as never);
+    vi.spyOn(contactsApi, "fetchUnionPreview").mockResolvedValue(preview);
+    return {
+      unir: vi.spyOn(contactsApi, "unirContactos").mockResolvedValue({ id: "A" }),
+      resolver: vi.spyOn(api, "resolverContacto").mockResolvedValue({ conversationId: "C1" }),
+    };
+  }
+
   it("no se muestra si la conversación no está por revisar", () => {
     render(
       conQuery(
-        <BarraPorRevisar
-          porRevisar={false}
-          conversationId="C1"
-          candidatos={candidatos}
-          canEdit
-          onResolved={() => {}}
-        />,
+        <BarraPorRevisar {...base} porRevisar={false} candidatos={candidatos} onResolved={() => {}} />,
       ),
     );
-    expect(screen.queryByText(/lo comparten/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/fichas con este número/)).not.toBeInTheDocument();
   });
 
-  it("muestra cuántas personas comparten el número, y desaparece al resolver", async () => {
-    vi.spyOn(api, "resolverContacto").mockResolvedValue({ conversationId: "C1" });
-    const props = { conversationId: "C1", candidatos, canEdit: true, onResolved: () => {} };
-    const { rerender } = render(conQuery(<BarraPorRevisar {...props} porRevisar />));
+  it("pregunta si son la misma persona con la cantidad de fichas", () => {
+    render(conQuery(<BarraPorRevisar {...base} porRevisar candidatos={candidatos} onResolved={() => {}} />));
     expect(
-      screen.getByText("Este número lo comparten 3 personas. ¿Quién es la titular?"),
+      screen.getByText("Hay 3 fichas con este número. ¿Son la misma persona o distintas?"),
     ).toBeInTheDocument();
+  });
 
-    await userEvent.click(screen.getByRole("button", { name: "Elegir titular" }));
+  it("'Son distintas → Elegir titular' abre el modal de titular", async () => {
+    render(conQuery(<BarraPorRevisar {...base} porRevisar candidatos={candidatos} onResolved={() => {}} />));
+    await userEvent.click(screen.getByRole("button", { name: "Son distintas → Elegir titular" }));
     expect(screen.getByRole("radio", { name: "Andrea" })).toBeInTheDocument();
+  });
 
-    // Al resolver, la conversación se vuelve a pedir con la marca apagada.
-    rerender(conQuery(<BarraPorRevisar {...props} porRevisar={false} />));
-    expect(screen.queryByText(/lo comparten/)).not.toBeInTheDocument();
+  it("'Es la misma → Unir' abre el unir con la otra ficha preseleccionada si son 2", async () => {
+    mocks();
+    render(conQuery(<BarraPorRevisar {...base} porRevisar candidatos={dos} onResolved={() => {}} />));
+    await userEvent.click(screen.getByRole("button", { name: "Es la misma → Unir" }));
+    expect(await screen.findByRole("button", { name: "Unir fichas" })).toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: "Andrea" })).not.toBeInTheDocument();
+  });
+
+  it("al unir 2 fichas queda una: resuelve con la que sobrevive", async () => {
+    const { unir, resolver } = mocks();
+    const onResolved = vi.fn();
+    render(conQuery(<BarraPorRevisar {...base} porRevisar candidatos={dos} onResolved={onResolved} />));
+    await userEvent.click(screen.getByRole("button", { name: "Es la misma → Unir" }));
+    const unirBtn = await screen.findByRole("button", { name: "Unir fichas" });
+    await waitFor(() => expect(unirBtn).toBeEnabled());
+    await userEvent.click(unirBtn);
+    await waitFor(() => expect(unir).toHaveBeenCalledWith("A", "H"));
+    await waitFor(() => expect(resolver).toHaveBeenCalledWith("C1", { titularId: "A", otros: [] }));
+    await waitFor(() => expect(onResolved).toHaveBeenCalledWith("C1"));
+  });
+
+  it("con 3 fichas se elige cuál unir y, al unir, no resuelve (quedan 2)", async () => {
+    const { unir, resolver } = mocks();
+    render(conQuery(<BarraPorRevisar {...base} porRevisar candidatos={candidatos} onResolved={() => {}} />));
+    await userEvent.click(screen.getByRole("button", { name: "Es la misma → Unir" }));
+    expect(screen.queryByRole("button", { name: "Unir fichas" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Domingo/ }));
+    const unirBtn = await screen.findByRole("button", { name: "Unir fichas" });
+    await waitFor(() => expect(unirBtn).toBeEnabled());
+    await userEvent.click(unirBtn);
+    await waitFor(() => expect(unir).toHaveBeenCalledWith("A", "P"));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Unir fichas" })).not.toBeInTheDocument());
+    expect(resolver).not.toHaveBeenCalled();
   });
 });

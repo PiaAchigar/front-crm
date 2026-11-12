@@ -213,6 +213,7 @@ export function ConversationThread({
         <BarraPorRevisar
           porRevisar={porRevisar}
           conversationId={conversationId}
+          contactId={contactId}
           candidatos={candidatosPorRevisar({ id: contactId, name: conversation.contactName }, vinculos)}
           canEdit={canEdit}
           onResolved={(id) => onResolved?.(id)}

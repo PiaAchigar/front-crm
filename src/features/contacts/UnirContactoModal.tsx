@@ -32,12 +32,21 @@ function mensajeDeError(e: unknown): string {
 export function UnirContactoModal({
   contact,
   onClose,
+  candidatos,
+  onUnido,
 }: {
-  contact: Contact;
+  contact: Pick<Contact, "id" | "name">;
   onClose: () => void;
+  /** Si viene, se elige entre estas fichas en vez de buscar (y con una sola queda preseleccionada). */
+  candidatos?: Pick<Contact, "id" | "name">[];
+  /** Recibe el id de la ficha que se borró. */
+  onUnido?: (duplicadoId: string) => void;
 }) {
   const [q, setQ] = useState("");
-  const [elegido, setElegido] = useState<Contact | null>(null);
+  const otrosFijos = candidatos?.filter((c) => c.id !== contact.id);
+  const [elegido, setElegido] = useState<Pick<Contact, "id" | "name"> & Partial<Contact> | null>(
+    otrosFijos?.length === 1 ? otrosFijos[0] : null,
+  );
   const buscar = q.trim().length >= 2;
   const { data } = useContactsList({ q: buscar ? q.trim() : undefined, limit: 8, offset: 0 });
   const preview = useUnionPreview(contact.id, elegido?.id ?? null);
@@ -46,7 +55,8 @@ export function UnirContactoModal({
 
   const nombreA = contact.name ?? "esta ficha";
   const nombreB = elegido?.name ?? "la otra ficha";
-  const candidatos = buscar ? (data?.items ?? []).filter((c) => c.id !== contact.id) : [];
+  const encontrados: (Pick<Contact, "id" | "name"> & Partial<Contact>)[] = otrosFijos
+    ?? (buscar ? (data?.items ?? []).filter((c) => c.id !== contact.id) : []);
   const errorMsg = unir.error ?? preview.error;
 
   return (
@@ -60,15 +70,15 @@ export function UnirContactoModal({
 
         {!elegido ? (
           <>
-            <input
+            {!otrosFijos && <input
               autoFocus
               className="w-full rounded border border-surface-highest bg-surface px-3 py-2 text-sm"
               placeholder="Buscar por nombre, teléfono o email…"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-            />
+            />}
             <ul className="mt-2 flex max-h-60 flex-col gap-1 overflow-y-auto">
-              {candidatos.map((c) => (
+              {encontrados.map((c) => (
                 <li key={c.id}>
                   <button
                     className="w-full rounded-lg p-2 text-left text-sm hover:bg-surface-high"
@@ -79,7 +89,7 @@ export function UnirContactoModal({
                   </button>
                 </li>
               ))}
-              {buscar && data && candidatos.length === 0 && (
+              {!otrosFijos && buscar && data && encontrados.length === 0 && (
                 <li className="p-2 text-sm text-ink-soft">No encontramos a nadie.</li>
               )}
             </ul>
@@ -103,15 +113,17 @@ export function UnirContactoModal({
             {errorMsg && (
               <p className="rounded bg-red-50 px-3 py-2 text-red-800">{mensajeDeError(errorMsg)}</p>
             )}
-            <button
-              className="self-start text-xs text-primary hover:underline"
-              onClick={() => {
-                setElegido(null);
-                unir.reset();
-              }}
-            >
-              Elegir otra ficha
-            </button>
+            {otrosFijos?.length !== 1 && (
+              <button
+                className="self-start text-xs text-primary hover:underline"
+                onClick={() => {
+                  setElegido(null);
+                  unir.reset();
+                }}
+              >
+                Elegir otra ficha
+              </button>
+            )}
           </div>
         )}
 
@@ -127,7 +139,15 @@ export function UnirContactoModal({
               className="rounded-full bg-primary px-4 py-1.5 text-sm text-white hover:bg-primary-dark disabled:opacity-40"
               disabled={!preview.data || unir.isPending}
               onClick={() =>
-                unir.mutate({ id: contact.id, duplicadoId: elegido.id }, { onSuccess: onClose })
+                unir.mutate(
+                  { id: contact.id, duplicadoId: elegido.id },
+                  {
+                    onSuccess: () => {
+                      onUnido?.(elegido.id);
+                      onClose();
+                    },
+                  },
+                )
               }
             >
               {unir.isPending ? "Uniendo…" : "Unir fichas"}
