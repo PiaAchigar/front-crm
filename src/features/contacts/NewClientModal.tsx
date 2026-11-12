@@ -32,8 +32,8 @@ export function NewClientModal({ onClose }: { onClose: () => void }) {
   }
 
   function intentar() {
-    const motivo = problemaDeNumero("", phone);
-    if (motivo) setAviso(motivo);
+    const problema = problemaDeNumero("", phone);
+    if (problema) setAviso(problema.motivo);
     else crear();
   }
 

@@ -167,6 +167,11 @@ export function useUnirContactos() {
       unirContactos(id, duplicadoId),
     onSuccess: () => {
       invalidarFamilia(qc);
+      // Las compras y el saldo del duplicado pasan a la ficha que queda: las cards no deben quedar viejas.
+      // (Mismas claves que useCompras.ts; no sabemos el customerId, así que se invalida por prefijo.)
+      qc.invalidateQueries({ queryKey: ["compras"] });
+      qc.invalidateQueries({ queryKey: ["saldo"] });
+      qc.invalidateQueries({ queryKey: ["saldos-vencidos"] });
       qc.invalidateQueries({ queryKey: ["conversations"] });
       qc.invalidateQueries({ queryKey: ["conversation"] });
     },

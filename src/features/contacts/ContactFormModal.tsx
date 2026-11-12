@@ -1,8 +1,8 @@
 import { useState } from "react";
 import type { Contact, ContactInput } from "../../api/contacts";
-import { diagnosticoTelefono, type MotivoTelefono } from "../../lib/telefono";
+import { diagnosticoTelefono } from "../../lib/telefono";
 import { AvisoTelefonoDialog } from "./AvisoTelefonoDialog";
-import { problemaDeNumero } from "./avisoTelefono";
+import { problemaDeNumero, type ProblemaDeNumero } from "./avisoTelefono";
 
 const field =
   "rounded border border-surface-highest bg-surface px-3 py-2 text-sm";
@@ -19,7 +19,7 @@ export function ContactFormModal({
   /** Error del guardado (por ejemplo, la API rechazó el WhatsApp ID). */
   error?: string | null;
 }) {
-  const [aviso, setAviso] = useState<MotivoTelefono | null>(null);
+  const [aviso, setAviso] = useState<ProblemaDeNumero | null>(null);
   const [name, setName] = useState(contact?.name ?? "");
   const [phone, setPhone] = useState(contact?.phone ?? "");
   const [email, setEmail] = useState(contact?.email ?? "");
@@ -39,7 +39,10 @@ export function ContactFormModal({
   function handleSubmit(confirmado = false) {
     if (!name.trim()) return;
     if (!confirmado) {
-      const motivo = problemaDeNumero(whatsappId, phone);
+      const motivo = problemaDeNumero(whatsappId, phone, {
+        whatsappId: contact?.whatsappId,
+        phone: contact?.phone,
+      });
       if (motivo) {
         setAviso(motivo);
         return;
@@ -49,7 +52,9 @@ export function ContactFormModal({
     // Un WhatsApp ID válido en otro formato (+54 9 11 …) se guarda normalizado.
     const wa = whatsappId.trim();
     const diag = wa ? diagnosticoTelefono(wa) : null;
-    const whatsappFinal = diag?.ok ? diag.whatsappId : wa;
+    // Si no se tocó y ya era inválido, no se reenvía: la API lo rechazaría.
+    const intacto = wa === (contact?.whatsappId ?? "").trim();
+    const whatsappFinal = diag?.ok ? diag.whatsappId : intacto ? "" : wa;
     const clean = (s: string) => s.trim() || undefined;
     const tagList = tags
       .split(",")
@@ -149,9 +154,9 @@ export function ContactFormModal({
       </div>
       {aviso && (
         <AvisoTelefonoDialog
-          motivo={aviso}
+          motivo={aviso.motivo}
           onCorregir={() => setAviso(null)}
-          onGuardarIgual={() => handleSubmit(true)}
+          onGuardarIgual={aviso.campo === "phone" ? () => handleSubmit(true) : undefined}
         />
       )}
     </div>

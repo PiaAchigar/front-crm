@@ -75,12 +75,15 @@ export function FamiliaSection({ contact }: { contact: Contact }) {
                   <Link to={`/contactos/${p.id}`} className="text-primary hover:underline">
                     {p.name ?? "Sin nombre"}
                   </Link>
-                  <button
-                    className="rounded-full border border-surface-highest px-3 py-0.5 text-xs hover:bg-surface-high"
-                    onClick={() => setVinculando(p)}
-                  >
-                    Vincular
-                  </button>
+                  {/* Si esta ficha está a cargo de otra, no puede ser titular (la API lo rechaza). */}
+                  {!data.titular && (
+                    <button
+                      className="rounded-full border border-surface-highest px-3 py-0.5 text-xs hover:bg-surface-high"
+                      onClick={() => setVinculando(p)}
+                    >
+                      Vincular
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>

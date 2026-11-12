@@ -15,7 +15,8 @@ export function AvisoTelefonoDialog({
 }: {
   motivo: MotivoTelefono;
   onCorregir: () => void;
-  onGuardarIgual: () => void;
+  /** Sin esto no se ofrece "Guardar igual" (un WhatsApp ID inválido la API lo rechaza). */
+  onGuardarIgual?: () => void;
 }) {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4">
@@ -25,12 +26,14 @@ export function AvisoTelefonoDialog({
           WhatsApp lo necesita así: 549 + código de área sin 0 + número sin 15. Ej: 5491130317884.
         </p>
         <div className="mt-5 flex justify-end gap-2">
-          <button
-            className="rounded-full px-4 py-1.5 text-sm text-ink-soft hover:bg-surface-high"
-            onClick={onGuardarIgual}
-          >
-            Guardar igual
-          </button>
+          {onGuardarIgual && (
+            <button
+              className="rounded-full px-4 py-1.5 text-sm text-ink-soft hover:bg-surface-high"
+              onClick={onGuardarIgual}
+            >
+              Guardar igual
+            </button>
+          )}
           <button
             className="rounded-full bg-primary px-4 py-1.5 text-sm text-white hover:bg-primary-dark"
             onClick={onCorregir}

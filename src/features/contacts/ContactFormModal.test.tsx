@@ -118,10 +118,45 @@ describe("ContactFormModal — aviso del número", () => {
     expect(onSave).not.toHaveBeenCalled();
   });
 
-  it("Guardar igual guarda el número tal cual", async () => {
-    const onSave = await guardarCon({ whatsapp: "1530317884" });
+  it("WhatsApp ID inválido: sólo se ofrece Corregir (la API lo rechaza)", async () => {
+    await guardarCon({ whatsapp: "1530317884" });
+    expect(screen.getByRole("button", { name: "Corregir" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Guardar igual" })).not.toBeInTheDocument();
+  });
+
+  it("WhatsApp válido + Teléfono inválido: ofrece Guardar igual y guarda tal cual", async () => {
+    const onSave = await guardarCon({ whatsapp: "5491130317884", telefono: "1530317884" });
     await userEvent.click(screen.getByRole("button", { name: "Guardar igual" }));
-    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ whatsappId: "1530317884" }));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ whatsappId: "5491130317884", phone: "1530317884" }),
+    );
+  });
+
+  it("si el teléfono basura ya estaba cargado y no se toca, no avisa ni reenvía el WhatsApp inválido", async () => {
+    const onSave = vi.fn();
+    render(
+      <ContactFormModal
+        contact={{ ...contactoBase, phone: "1530317884", whatsappId: "1530317884" }}
+        onClose={() => {}}
+        onSave={onSave}
+      />,
+    );
+    await userEvent.type(screen.getByPlaceholderText("Email"), "a@b.com");
+    await userEvent.click(screen.getByRole("button", { name: /^guardar$/i }));
+    expect(screen.queryByText(AVISO)).not.toBeInTheDocument();
+    const enviado = onSave.mock.calls[0]![0];
+    expect(enviado.whatsappId).toBeUndefined();
+    expect(enviado.email).toBe("a@b.com");
+  });
+
+  it("si el teléfono basura se edita, avisa", async () => {
+    const onSave = vi.fn();
+    render(
+      <ContactFormModal contact={{ ...contactoBase, phone: "1530317884" }} onClose={() => {}} onSave={onSave} />,
+    );
+    await userEvent.type(screen.getByPlaceholderText("Teléfono"), "5");
+    await userEvent.click(screen.getByRole("button", { name: /^guardar$/i }));
+    expect(screen.getByText(AVISO)).toBeInTheDocument();
   });
 
   it("+54 9 11 3031-7884 se guarda normalizado y sin aviso", async () => {

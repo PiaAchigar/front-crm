@@ -255,6 +255,8 @@ export type UnionPreview = {
   facturas: number;
   compras: number;
   aCargo: number;
+  /** La ficha que queda está a cargo de alguien y la que se borra tiene personas a cargo: al unir, la que queda pierde su titular. */
+  pierdeTitular: boolean;
 };
 
 export function fetchUnionPreview(id: string, duplicadoId: string): Promise<UnionPreview> {

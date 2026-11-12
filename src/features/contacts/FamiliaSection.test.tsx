@@ -81,6 +81,17 @@ describe("FamiliaSection", () => {
     );
   });
 
+  it("si esta ficha está a cargo de otra, no ofrece Vincular", async () => {
+    vi.spyOn(api, "fetchVinculos").mockResolvedValue({
+      titular: { id: "T", name: "Andrea", relationship: "hija", relationshipOther: null },
+      aCargo: [],
+      compartenNumero: [{ id: "X", name: "Lucía" }],
+    });
+    montar({ ...contacto, id: "H", name: "Sofía" });
+    expect(await screen.findByText("Comparten este número")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Vincular" })).not.toBeInTheDocument();
+  });
+
   describe("Unir con otro contacto", () => {
     function preparar() {
       vi.spyOn(api, "fetchVinculos").mockResolvedValue(vacio);
@@ -106,7 +117,7 @@ describe("FamiliaSection", () => {
     it("busca, muestra qué se mueve y une", async () => {
       preparar();
       vi.spyOn(api, "fetchUnionPreview").mockResolvedValue({
-        conversaciones: 1, turnos: 3, pagos: 0, facturas: 0, compras: 0, aCargo: 0,
+        conversaciones: 1, turnos: 3, pagos: 0, facturas: 0, compras: 0, aCargo: 0, pierdeTitular: false,
       });
       const unir = vi.spyOn(api, "unirContactos").mockResolvedValue({ id: "A" });
       await hastaElPreview();
@@ -117,10 +128,48 @@ describe("FamiliaSection", () => {
       await waitFor(() => expect(unir).toHaveBeenCalledWith("A", "B"));
     });
 
+    it("avisa si la ficha que queda pierde a su titular", async () => {
+      preparar();
+      vi.spyOn(api, "fetchUnionPreview").mockResolvedValue({
+        conversaciones: 0, turnos: 0, pagos: 0, facturas: 0, compras: 0, aCargo: 1, pierdeTitular: true,
+      });
+      await hastaElPreview();
+      expect(
+        await screen.findByText(
+          /Ojo: Andrea deja de estar a cargo de su titular, porque pasa a ser titular de las personas a cargo de Andrea P\./,
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("al unir se invalidan compras, saldo y saldos vencidos", async () => {
+      preparar();
+      vi.spyOn(api, "fetchUnionPreview").mockResolvedValue({
+        conversaciones: 0, turnos: 0, pagos: 0, facturas: 0, compras: 0, aCargo: 0, pierdeTitular: false,
+      });
+      vi.spyOn(api, "unirContactos").mockResolvedValue({ id: "A" });
+      const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      const inv = vi.spyOn(qc, "invalidateQueries");
+      render(
+        <QueryClientProvider client={qc}>
+          <MemoryRouter>
+            <FamiliaSection contact={contacto} />
+          </MemoryRouter>
+        </QueryClientProvider>,
+      );
+      await userEvent.click(await screen.findByRole("button", { name: "Unir con otro contacto" }));
+      await userEvent.type(screen.getByPlaceholderText(/buscar/i), "andrea");
+      await userEvent.click(await screen.findByRole("button", { name: /Andrea P\./ }));
+      await userEvent.click(await screen.findByRole("button", { name: "Unir fichas" }));
+      await waitFor(() => {
+        const claves = inv.mock.calls.map((c) => (c[0] as { queryKey: string[] }).queryKey[0]);
+        expect(claves).toEqual(expect.arrayContaining(["compras", "saldo", "saldos-vencidos"]));
+      });
+    });
+
     it("409: avisa que tienen DNI o CUIT distintos", async () => {
       preparar();
       vi.spyOn(api, "fetchUnionPreview").mockResolvedValue({
-        conversaciones: 0, turnos: 0, pagos: 0, facturas: 0, compras: 0, aCargo: 0,
+        conversaciones: 0, turnos: 0, pagos: 0, facturas: 0, compras: 0, aCargo: 0, pierdeTitular: false,
       });
       vi.spyOn(api, "unirContactos").mockRejectedValue(new ApiError(409, "DNI distinto"));
       await hastaElPreview();
