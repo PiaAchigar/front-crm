@@ -62,4 +62,27 @@ describe("embed — avisos", () => {
     window.dispatchEvent(new MessageEvent("message", { data: msg, origin: ORIGIN }));
     expect(cb).toHaveBeenCalledTimes(1);
   });
+
+  it("escucharEstadoAvisos pide el estado al dashboard después de registrar el listener", async () => {
+    const { escucharEstadoAvisos } = await cargar();
+    const stop = escucharEstadoAvisos(vi.fn());
+    expect(parent).toHaveBeenCalledWith({ type: "piubella:crm:avisos-pedir-estado" }, ORIGIN);
+    stop();
+  });
+
+  it("escucharAbrirConversacion acepta el origin del dashboard e ignora los demás", async () => {
+    const { escucharAbrirConversacion } = await cargar();
+    const cb = vi.fn();
+    const stop = escucharAbrirConversacion(cb);
+    const msg = { type: "piubella:crm:abrir", conversationId: "C5" };
+    window.dispatchEvent(new MessageEvent("message", { data: msg, origin: "https://otro.test" }));
+    expect(cb).not.toHaveBeenCalled();
+    window.dispatchEvent(new MessageEvent("message", { data: { type: "piubella:crm:abrir" }, origin: ORIGIN }));
+    expect(cb).not.toHaveBeenCalled();
+    window.dispatchEvent(new MessageEvent("message", { data: msg, origin: ORIGIN }));
+    expect(cb).toHaveBeenCalledWith("C5");
+    stop();
+    window.dispatchEvent(new MessageEvent("message", { data: msg, origin: ORIGIN }));
+    expect(cb).toHaveBeenCalledTimes(1);
+  });
 });

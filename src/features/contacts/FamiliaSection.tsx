@@ -25,11 +25,10 @@ export function FamiliaSection({ contact }: { contact: Contact }) {
         {data?.titular && (
           <div className="flex flex-wrap items-center gap-2">
             <p>
-              Lo tutela:{" "}
               <Link to={`/contactos/${data.titular.id}`} className="text-primary hover:underline">
                 {data.titular.name ?? "Sin nombre"}
               </Link>{" "}
-              (es su{" "}
+              está a cargo de {contact.name ?? "Sin nombre"} ({contact.name ?? "Sin nombre"} es su{" "}
               {etiquetaDeParentesco(data.titular.relationship, data.titular.relationshipOther).toLowerCase()}
               ) · usa su WhatsApp
             </p>
@@ -78,7 +77,7 @@ export function FamiliaSection({ contact }: { contact: Contact }) {
                   <Link to={`/contactos/${p.id}`} className="text-primary hover:underline">
                     {p.name ?? "Sin nombre"}
                   </Link>
-                  {/* Si esta ficha está a cargo de otra, no puede ser titular (la API lo rechaza). */}
+                  {/* Si esta ficha ya tiene titular (el titular está a cargo de ella), no puede ser titular de otra (la API lo rechaza). */}
                   {!data.titular && (
                     <button
                       className="rounded-full border border-surface-highest px-3 py-0.5 text-xs hover:bg-surface-high"

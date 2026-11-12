@@ -7,6 +7,7 @@ import { InboxPage } from "./InboxPage";
 const embed = vi.hoisted(() => ({
   isEmbedded: true,
   estado: null as null | ((s: boolean) => void),
+  abrir: null as null | ((id: string) => void),
   silenciar: vi.fn(),
   viendo: vi.fn(),
 }));
@@ -18,6 +19,12 @@ vi.mock("../../lib/embed", () => ({
     embed.estado = cb;
     return () => {
       embed.estado = null;
+    };
+  },
+  escucharAbrirConversacion: (cb: (id: string) => void) => {
+    embed.abrir = cb;
+    return () => {
+      embed.abrir = null;
     };
   },
   pedirSilenciarAvisos: embed.silenciar,
@@ -76,5 +83,12 @@ describe("InboxPage — avisos", () => {
     expect(embed.viendo).toHaveBeenLastCalledWith("C2");
     unmount();
     expect(embed.viendo).toHaveBeenLastCalledWith(null);
+  });
+
+  it("el dashboard pide abrir una conversación: la selecciona", () => {
+    montar();
+    act(() => embed.abrir?.("C7"));
+    expect(screen.getByText("hilo C7")).toBeInTheDocument();
+    expect(embed.viendo).toHaveBeenLastCalledWith("C7");
   });
 });

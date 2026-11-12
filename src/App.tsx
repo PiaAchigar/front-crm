@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { useIrAlInboxAlAbrir } from "./features/inbox/useIrAlInboxAlAbrir";
 import { AppShell } from "./components/AppShell";
 import { ContactsPage } from "./features/contacts/ContactsPage";
 import { ContactDetailPage } from "./features/contacts/ContactDetailPage";
@@ -25,6 +26,7 @@ function DondeEstaba() {
 /** Las rutas, anotando la pantalla actual a medida que cambia. */
 function Rutas() {
   useRecordarRuta(CLAVE_DE_RUTA);
+  useIrAlInboxAlAbrir();
   return (
     <Routes>
       <Route path="/" element={<DondeEstaba />} />

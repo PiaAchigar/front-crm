@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   avisarConversacionAbierta,
+  escucharAbrirConversacion,
   escucharEstadoAvisos,
   isEmbedded,
   pedirSilenciarAvisos,
@@ -25,6 +26,9 @@ export function InboxPage() {
   const [silenciado, setSilenciado] = useState(false);
 
   useEffect(() => escucharEstadoAvisos(setSilenciado), []);
+
+  // El dashboard pide abrir una conversación (tocaron un aviso con el CRM ya abierto).
+  useEffect(() => escucharAbrirConversacion(setSelectedId), []);
 
   // El dashboard no avisa de la conversación que se está mirando.
   useEffect(() => {

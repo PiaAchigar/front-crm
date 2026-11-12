@@ -87,12 +87,18 @@ export function pedirAgendar(datos: PrefillAgendar): void {
 const AVISOS_ESTADO_MSG = "piubella:crm:avisos-estado";
 const AVISOS_SILENCIAR_MSG = "piubella:crm:avisos-silenciar";
 const VIENDO_MSG = "piubella:crm:viendo";
+const AVISOS_PEDIR_ESTADO_MSG = "piubella:crm:avisos-pedir-estado";
+const ABRIR_MSG = "piubella:crm:abrir";
 
 /**
  * El dashboard le cuenta al CRM si los avisos de mensajes nuevos están
  * silenciados, para que el botón del Inbox diga lo correcto. Mismo canal y
  * misma verificación de origin que el handshake del token. Devuelve la
  * función para dejar de escuchar.
+ *
+ * Después de registrar el listener le PIDE el estado al dashboard
+ * (`avisos-pedir-estado`): así no depende de que otro `ready` caiga justo
+ * después de montar.
  */
 export function escucharEstadoAvisos(cb: (silenciado: boolean) => void): () => void {
   function onMessage(e: MessageEvent) {
@@ -100,6 +106,26 @@ export function escucharEstadoAvisos(cb: (silenciado: boolean) => void): () => v
     const data = e.data as { type?: string; silenciado?: unknown } | null;
     if (data?.type === AVISOS_ESTADO_MSG && typeof data.silenciado === "boolean") {
       cb(data.silenciado);
+    }
+  }
+  window.addEventListener("message", onMessage);
+  if (isEmbedded) {
+    window.parent.postMessage({ type: AVISOS_PEDIR_ESTADO_MSG }, DASHBOARD_ORIGIN ?? "*");
+  }
+  return () => window.removeEventListener("message", onMessage);
+}
+
+/**
+ * El dashboard pide abrir una conversación (tocaron un aviso con el CRM ya
+ * abierto). Misma verificación de origin que el resto. Devuelve la función
+ * para dejar de escuchar.
+ */
+export function escucharAbrirConversacion(cb: (conversationId: string) => void): () => void {
+  function onMessage(e: MessageEvent) {
+    if (DASHBOARD_ORIGIN && e.origin !== DASHBOARD_ORIGIN) return;
+    const data = e.data as { type?: string; conversationId?: unknown } | null;
+    if (data?.type === ABRIR_MSG && typeof data.conversationId === "string" && data.conversationId) {
+      cb(data.conversationId);
     }
   }
   window.addEventListener("message", onMessage);

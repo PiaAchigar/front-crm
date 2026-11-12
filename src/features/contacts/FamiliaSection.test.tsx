@@ -47,8 +47,8 @@ describe("FamiliaSection", () => {
       titular: { id: "T", name: "Andrea", relationship: "hija", relationshipOther: null },
     });
     montar({ ...contacto, id: "H", name: "Sofía" });
-    const p = (await screen.findByText(/Lo tutela:/)).closest("p")!;
-    expect(p).toHaveTextContent("Lo tutela: Andrea (es su hija) · usa su WhatsApp");
+    const p = (await screen.findByText(/está a cargo de Sofía/)).closest("p")!;
+    expect(p).toHaveTextContent("Andrea está a cargo de Sofía (Sofía es su hija) · usa su WhatsApp");
     expect(screen.getByRole("link", { name: "Andrea" })).toHaveAttribute("href", "/contactos/T");
   });
 
