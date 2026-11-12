@@ -91,3 +91,60 @@ describe("ContactFormModal — sexo", () => {
     expect(screen.getByLabelText(/sexo/i)).toHaveValue("hombre");
   });
 });
+
+describe("ContactFormModal — aviso del número", () => {
+  const AVISO = /WhatsApp lo necesita así: 549 \+ código de área sin 0 \+ número sin 15\. Ej: 5491130317884\./;
+
+  async function guardarCon(campos: { whatsapp?: string; telefono?: string }) {
+    const onSave = vi.fn();
+    render(<ContactFormModal contact={{ ...contactoBase }} onClose={() => {}} onSave={onSave} />);
+    if (campos.whatsapp) await userEvent.type(screen.getByPlaceholderText("WhatsApp ID"), campos.whatsapp);
+    if (campos.telefono) await userEvent.type(screen.getByPlaceholderText("Teléfono"), campos.telefono);
+    await userEvent.click(screen.getByRole("button", { name: /^guardar$/i }));
+    return onSave;
+  }
+
+  it("WhatsApp ID con 15: muestra el aviso y no guarda todavía", async () => {
+    const onSave = await guardarCon({ whatsapp: "1530317884" });
+    expect(screen.getByText(AVISO)).toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("Corregir vuelve al formulario sin guardar", async () => {
+    const onSave = await guardarCon({ whatsapp: "1530317884" });
+    await userEvent.click(screen.getByRole("button", { name: "Corregir" }));
+    expect(screen.queryByText(AVISO)).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText("WhatsApp ID")).toHaveValue("1530317884");
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("Guardar igual guarda el número tal cual", async () => {
+    const onSave = await guardarCon({ whatsapp: "1530317884" });
+    await userEvent.click(screen.getByRole("button", { name: "Guardar igual" }));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ whatsappId: "1530317884" }));
+  });
+
+  it("+54 9 11 3031-7884 se guarda normalizado y sin aviso", async () => {
+    const onSave = await guardarCon({ whatsapp: "+54 9 11 3031-7884" });
+    expect(screen.queryByText(AVISO)).not.toBeInTheDocument();
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ whatsappId: "5491130317884" }));
+  });
+
+  it("avisa también si el Teléfono trae 15", async () => {
+    const onSave = await guardarCon({ telefono: "1530317884" });
+    expect(screen.getByText(AVISO)).toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("avisa también si el Teléfono trae 0", async () => {
+    const onSave = await guardarCon({ telefono: "01130317884" });
+    expect(screen.getByText(AVISO)).toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("sin números cargados no avisa", async () => {
+    const onSave = await guardarCon({});
+    expect(screen.queryByText(AVISO)).not.toBeInTheDocument();
+    expect(onSave).toHaveBeenCalled();
+  });
+});

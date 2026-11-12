@@ -254,7 +254,12 @@ export function ContactDetailPage() {
       </section>
 
       {editing && (
-        <ContactFormModal contact={contact} onClose={() => setEditing(false)} onSave={handleSave} />
+        <ContactFormModal
+          contact={contact}
+          onClose={() => setEditing(false)}
+          onSave={handleSave}
+          error={update.error ? (update.error as Error).message : null}
+        />
       )}
 
       {confirmingArchive && (

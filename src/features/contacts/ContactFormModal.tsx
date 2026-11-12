@@ -1,5 +1,8 @@
 import { useState } from "react";
 import type { Contact, ContactInput } from "../../api/contacts";
+import { diagnosticoTelefono, type MotivoTelefono } from "../../lib/telefono";
+import { AvisoTelefonoDialog } from "./AvisoTelefonoDialog";
+import { problemaDeNumero } from "./avisoTelefono";
 
 const field =
   "rounded border border-surface-highest bg-surface px-3 py-2 text-sm";
@@ -8,11 +11,15 @@ export function ContactFormModal({
   contact,
   onClose,
   onSave,
+  error,
 }: {
   contact: Contact | null;
   onClose: () => void;
   onSave: (data: ContactInput) => void;
+  /** Error del guardado (por ejemplo, la API rechazó el WhatsApp ID). */
+  error?: string | null;
 }) {
+  const [aviso, setAviso] = useState<MotivoTelefono | null>(null);
   const [name, setName] = useState(contact?.name ?? "");
   const [phone, setPhone] = useState(contact?.phone ?? "");
   const [email, setEmail] = useState(contact?.email ?? "");
@@ -29,8 +36,20 @@ export function ContactFormModal({
   const [country, setCountry] = useState(contact?.country ?? "");
   const [notes, setNotes] = useState(contact?.notes ?? "");
 
-  function handleSubmit() {
+  function handleSubmit(confirmado = false) {
     if (!name.trim()) return;
+    if (!confirmado) {
+      const motivo = problemaDeNumero(whatsappId, phone);
+      if (motivo) {
+        setAviso(motivo);
+        return;
+      }
+    }
+    setAviso(null);
+    // Un WhatsApp ID válido en otro formato (+54 9 11 …) se guarda normalizado.
+    const wa = whatsappId.trim();
+    const diag = wa ? diagnosticoTelefono(wa) : null;
+    const whatsappFinal = diag?.ok ? diag.whatsappId : wa;
     const clean = (s: string) => s.trim() || undefined;
     const tagList = tags
       .split(",")
@@ -40,7 +59,7 @@ export function ContactFormModal({
       name: name.trim(),
       phone: clean(phone),
       email: clean(email),
-      whatsappId: clean(whatsappId),
+      whatsappId: whatsappFinal || undefined,
       instagramId: clean(instagramId),
       facebookId: clean(facebookId),
       birthdate: clean(birthdate),
@@ -115,15 +134,26 @@ export function ContactFormModal({
           </div>
         </div>
 
+        {error && (
+          <p className="mt-4 rounded bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>
+        )}
+
         <div className="mt-6 flex justify-end gap-2">
           <button className="rounded-full px-4 py-1.5 text-sm text-ink-soft hover:bg-surface-high" onClick={onClose}>
             Cancelar
           </button>
-          <button className="rounded-full bg-primary px-4 py-1.5 text-sm text-white hover:bg-primary-dark" onClick={handleSubmit}>
+          <button className="rounded-full bg-primary px-4 py-1.5 text-sm text-white hover:bg-primary-dark" onClick={() => handleSubmit()}>
             Guardar
           </button>
         </div>
       </div>
+      {aviso && (
+        <AvisoTelefonoDialog
+          motivo={aviso}
+          onCorregir={() => setAviso(null)}
+          onGuardarIgual={() => handleSubmit(true)}
+        />
+      )}
     </div>
   );
 }

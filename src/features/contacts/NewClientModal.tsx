@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { useCreateClient } from "./useContacts";
+import { AvisoTelefonoDialog } from "./AvisoTelefonoDialog";
+import { problemaDeNumero } from "./avisoTelefono";
+import type { MotivoTelefono } from "../../lib/telefono";
 
 /** El DNI es obligatorio y de 7 u 8 dígitos porque es la clave con la que el
  *  backend evita duplicados (5602 de los 5611 clientes migrados lo tienen
@@ -13,6 +16,26 @@ export function NewClientModal({ onClose }: { onClose: () => void }) {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const create = useCreateClient();
+  const [aviso, setAviso] = useState<MotivoTelefono | null>(null);
+
+  function crear() {
+    setAviso(null);
+    create.mutate(
+      {
+        name: name.trim(),
+        dni,
+        phone: phone.trim() || undefined,
+        email: email.trim() || undefined,
+      },
+      { onSuccess: onClose },
+    );
+  }
+
+  function intentar() {
+    const motivo = problemaDeNumero("", phone);
+    if (motivo) setAviso(motivo);
+    else crear();
+  }
 
   const valid = name.trim().length >= 2 && DNI_RE.test(dni);
 
@@ -76,22 +99,15 @@ export function NewClientModal({ onClose }: { onClose: () => void }) {
           <button
             className="rounded-full bg-primary px-4 py-1.5 text-sm text-white disabled:opacity-40"
             disabled={!valid || create.isPending}
-            onClick={() =>
-              create.mutate(
-                {
-                  name: name.trim(),
-                  dni,
-                  phone: phone.trim() || undefined,
-                  email: email.trim() || undefined,
-                },
-                { onSuccess: onClose },
-              )
-            }
+            onClick={intentar}
           >
             {create.isPending ? "Creando…" : "Crear cliente"}
           </button>
         </div>
       </div>
+      {aviso && (
+        <AvisoTelefonoDialog motivo={aviso} onCorregir={() => setAviso(null)} onGuardarIgual={crear} />
+      )}
     </div>
   );
 }
