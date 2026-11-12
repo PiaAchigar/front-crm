@@ -36,7 +36,8 @@ describe("FamiliaSection", () => {
     });
     montar();
     expect(await screen.findByText("Titular de 5491130317884")).toBeInTheDocument();
-    expect(screen.getByText(/Pareja:/)).toBeInTheDocument();
+    expect(screen.getByText("Está a cargo de:")).toBeInTheDocument();
+    expect(screen.getByText(/\(Pareja\)/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Domingo" })).toHaveAttribute("href", "/contactos/D");
   });
 
@@ -46,8 +47,8 @@ describe("FamiliaSection", () => {
       titular: { id: "T", name: "Andrea", relationship: "hija", relationshipOther: null },
     });
     montar({ ...contacto, id: "H", name: "Sofía" });
-    const p = (await screen.findByText(/Usa el WhatsApp de/)).closest("p")!;
-    expect(p).toHaveTextContent("Usa el WhatsApp de Andrea (Hija)");
+    const p = (await screen.findByText(/Lo tutela:/)).closest("p")!;
+    expect(p).toHaveTextContent("Lo tutela: Andrea (es su hija) · usa su WhatsApp");
     expect(screen.getByRole("link", { name: "Andrea" })).toHaveAttribute("href", "/contactos/T");
   });
 
@@ -57,7 +58,7 @@ describe("FamiliaSection", () => {
       aCargo: [{ id: "V", name: "Marta", relationship: "otro", relationshipOther: "vecina" }],
     });
     montar();
-    expect(await screen.findByText(/vecina:/)).toBeInTheDocument();
+    expect(await screen.findByText(/\(vecina\)/)).toBeInTheDocument();
   });
 
   it("comparten el número: Vincular abre el parentesco y manda el PUT a la persona elegida", async () => {
@@ -128,7 +129,27 @@ describe("FamiliaSection", () => {
       await waitFor(() => expect(unir).toHaveBeenCalledWith("A", "B"));
     });
 
-    it("avisa si la ficha que queda pierde a su titular", async () => {
+    it("avisa con el nombre del titular si la ficha que queda pierde a su titular", async () => {
+      vi.spyOn(api, "fetchVinculos").mockResolvedValue({
+        ...vacio,
+        titular: { id: "T", name: "Marta", relationship: "madre", relationshipOther: null },
+      });
+      vi.spyOn(api, "fetchContacts").mockResolvedValue({
+        items: [{ id: "B", name: "Andrea P.", phone: "1130317884" } as api.Contact],
+        total: 1,
+      });
+      vi.spyOn(api, "fetchUnionPreview").mockResolvedValue({
+        conversaciones: 0, turnos: 0, pagos: 0, facturas: 0, compras: 0, aCargo: 1, pierdeTitular: true,
+      });
+      await hastaElPreview();
+      expect(
+        await screen.findByText(
+          "Ojo: Marta deja de estar a cargo de Andrea, porque Andrea pasa a tener a cargo a las personas de Andrea P..",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("sin el nombre del titular usa el texto alternativo", async () => {
       preparar();
       vi.spyOn(api, "fetchUnionPreview").mockResolvedValue({
         conversaciones: 0, turnos: 0, pagos: 0, facturas: 0, compras: 0, aCargo: 1, pierdeTitular: true,
@@ -136,7 +157,7 @@ describe("FamiliaSection", () => {
       await hastaElPreview();
       expect(
         await screen.findByText(
-          /Ojo: Andrea deja de estar a cargo de su titular, porque pasa a ser titular de las personas a cargo de Andrea P\./,
+          "Ojo: Andrea deja de estar tutelado/a, porque pasa a tener a cargo a las personas de Andrea P..",
         ),
       ).toBeInTheDocument();
     });

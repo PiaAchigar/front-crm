@@ -25,11 +25,13 @@ export function FamiliaSection({ contact }: { contact: Contact }) {
         {data?.titular && (
           <div className="flex flex-wrap items-center gap-2">
             <p>
-              Usa el WhatsApp de{" "}
+              Lo tutela:{" "}
               <Link to={`/contactos/${data.titular.id}`} className="text-primary hover:underline">
                 {data.titular.name ?? "Sin nombre"}
               </Link>{" "}
-              ({etiquetaDeParentesco(data.titular.relationship, data.titular.relationshipOther)})
+              (es su{" "}
+              {etiquetaDeParentesco(data.titular.relationship, data.titular.relationshipOther).toLowerCase()}
+              ) · usa su WhatsApp
             </p>
             <button
               className="text-xs text-ink-soft underline hover:text-ink"
@@ -44,14 +46,15 @@ export function FamiliaSection({ contact }: { contact: Contact }) {
         {data && data.aCargo.length > 0 && (
           <div>
             <p>Titular de {numero}</p>
+            <p className="mt-1 text-ink-soft">Está a cargo de:</p>
             <ul className="mt-1 flex flex-col gap-1">
               {data.aCargo.map((p) => (
                 <li key={p.id} className="flex items-center gap-2">
                   <span>
-                    {etiquetaDeParentesco(p.relationship, p.relationshipOther)}:{" "}
                     <Link to={`/contactos/${p.id}`} className="text-primary hover:underline">
                       {p.name ?? "Sin nombre"}
-                    </Link>
+                    </Link>{" "}
+                    ({etiquetaDeParentesco(p.relationship, p.relationshipOther)})
                   </span>
                   <button
                     className="text-xs text-ink-soft underline hover:text-ink"

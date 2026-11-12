@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Contact, UnionPreview } from "../../api/contacts";
 import { ApiError } from "../../api/client";
-import { useContactsList, useUnionPreview, useUnirContactos } from "./useContacts";
+import { useContactsList, useUnionPreview, useUnirContactos, useVinculos } from "./useContacts";
 
 const MSG_409 = "No se pueden unir: tienen DNI o CUIT distintos";
 
@@ -11,12 +11,12 @@ function resumen(p: UnionPreview, a: string, b: string): string {
   return `Se pasan ${plural(p.turnos, "turno", "turnos")} y ${plural(p.conversaciones, "conversación", "conversaciones")} de ${b} a ${a}. ${b} se borra.`;
 }
 
-function extras(p: UnionPreview): string | null {
+function extras(p: UnionPreview, b: string): string | null {
   const partes = [
     p.pagos > 0 && plural(p.pagos, "pago", "pagos"),
     p.facturas > 0 && plural(p.facturas, "factura", "facturas"),
     p.compras > 0 && plural(p.compras, "compra", "compras"),
-    p.aCargo > 0 && `${plural(p.aCargo, "persona a cargo", "personas a cargo")} que pasan a depender de esta ficha`,
+    p.aCargo > 0 && `${plural(p.aCargo, "persona", "personas")} a cargo de ${b} que ${p.aCargo === 1 ? "pasa" : "pasan"} a estar a cargo de esta ficha`,
   ].filter(Boolean);
   return partes.length ? `También pasan: ${partes.join(", ")}.` : null;
 }
@@ -42,6 +42,7 @@ export function UnirContactoModal({
   const { data } = useContactsList({ q: buscar ? q.trim() : undefined, limit: 8, offset: 0 });
   const preview = useUnionPreview(contact.id, elegido?.id ?? null);
   const unir = useUnirContactos();
+  const { data: vinculos } = useVinculos(contact.id);
 
   const nombreA = contact.name ?? "esta ficha";
   const nombreB = elegido?.name ?? "la otra ficha";
@@ -91,11 +92,12 @@ export function UnirContactoModal({
                 <p>{resumen(preview.data, nombreA, nombreB)}</p>
                 {preview.data.pierdeTitular && (
                   <p className="rounded bg-amber-50 px-3 py-2 text-amber-900">
-                    Ojo: {nombreA} deja de estar a cargo de su titular, porque pasa a ser titular de
-                    las personas a cargo de {nombreB}.
+                    {vinculos?.titular?.name
+                      ? `Ojo: ${vinculos.titular.name} deja de estar a cargo de ${nombreA}, porque ${nombreA} pasa a tener a cargo a las personas de ${nombreB}.`
+                      : `Ojo: ${nombreA} deja de estar tutelado/a, porque pasa a tener a cargo a las personas de ${nombreB}.`}
                   </p>
                 )}
-                {extras(preview.data) && <p className="text-ink-soft">{extras(preview.data)}</p>}
+                {extras(preview.data, nombreB) && <p className="text-ink-soft">{extras(preview.data, nombreB)}</p>}
               </>
             )}
             {errorMsg && (
