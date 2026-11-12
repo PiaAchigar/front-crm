@@ -1,5 +1,6 @@
 import { apiFetch } from "./client";
 import type { ChannelType } from "./channels";
+import type { Parentesco } from "./contacts";
 
 export type Conversation = {
   id: string;
@@ -12,6 +13,8 @@ export type Conversation = {
   status: "open" | "closed" | null;
   assignedAgentId: string | null;
   messageCount: number | null;
+  /** Entró por un número que comparten varias fichas y falta elegir la titular. */
+  needsContactReview: boolean;
   lastMessageAt: string | null;
   lastMessagePreview: string | null;
   createdAt: string;
@@ -94,6 +97,27 @@ export function updateConversation(
 ): Promise<Conversation> {
   return apiFetch(`/api/crm/conversations/${id}`, {
     method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export type ResolverContactoInput = {
+  titularId: string;
+  otros: {
+    contactId: string;
+    relationship: Parentesco;
+    relationshipOther?: string;
+  }[];
+};
+
+/** Devuelve el id de la conversación que quedó: si la titular ya tenía una del
+ *  mismo canal se fusionan, y puede ser otra distinta de `id`. */
+export function resolverContacto(
+  id: string,
+  data: ResolverContactoInput,
+): Promise<{ conversationId: string }> {
+  return apiFetch(`/api/crm/conversations/${id}/resolver-contacto`, {
+    method: "POST",
     body: JSON.stringify(data),
   });
 }

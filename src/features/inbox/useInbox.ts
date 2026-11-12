@@ -5,6 +5,8 @@ import {
   createConversation,
   fetchConversation,
   fetchConversations,
+  resolverContacto,
+  type ResolverContactoInput,
   sendMessage,
   updateConversation,
 } from "../../api/inbox";
@@ -61,6 +63,21 @@ export function useUpdateConversation() {
     onSuccess: (_res, { id }) => {
       qc.invalidateQueries({ queryKey: ["conversation", id] });
       qc.invalidateQueries({ queryKey: ["conversations"] });
+    },
+  });
+}
+
+/** Elige la titular de un número compartido. Cambia fichas y vínculos además de la conversación. */
+export function useResolverContacto() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: ResolverContactoInput }) =>
+      resolverContacto(id, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: ["conversation"] });
+      qc.invalidateQueries({ queryKey: ["vinculos"] });
+      qc.invalidateQueries({ queryKey: ["contact"] });
     },
   });
 }

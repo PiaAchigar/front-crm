@@ -4,6 +4,8 @@ import { fetchAgents } from "../../api/deals";
 import { fetchMessagesAfter, fetchMessagesBefore, type Message } from "../../api/inbox";
 import { CANAL_WEB, metaDeCanal } from "./canal";
 import { ResponderFueraDelInbox } from "./ResponderFueraDelInbox";
+import { useVinculos } from "../contacts/useContacts";
+import { BarraPorRevisar } from "./BarraPorRevisar";
 import { useConversation, useSendMessage, useUpdateConversation } from "./useInbox";
 import { useSimulateInbound } from "../automation/useAutomations";
 import { can } from "../../lib/permissions";
@@ -15,9 +17,12 @@ const LOAD_OLDER_THRESHOLD_PX = 100;
 export function ConversationThread({
   conversationId,
   canEdit,
+  onResolved,
 }: {
   conversationId: string;
   canEdit: boolean;
+  /** La conversación pudo fusionarse en otra al elegir titular: recibe el id que quedó. */
+  onResolved?: (conversationId: string) => void;
 }) {
   const { data, isLoading, isError } = useConversation(conversationId);
   const { data: agents = [] } = useQuery({ queryKey: ["agents"], queryFn: fetchAgents });
@@ -27,6 +32,9 @@ export function ConversationThread({
   const { role } = useCrmSession();
   const canManage = can(role, "crm", "manage");
   const [draft, setDraft] = useState("");
+  const porRevisar = data?.conversation.needsContactReview === true;
+  const contactId = data?.conversation.contactId ?? null;
+  const { data: vinculos } = useVinculos(porRevisar ? contactId : null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const seededConversationId = useRef<string | null>(null);
@@ -198,6 +206,19 @@ export function ConversationThread({
           </div>
         )}
       </div>
+
+      {contactId && (
+        <BarraPorRevisar
+          porRevisar={porRevisar}
+          conversationId={conversationId}
+          candidatos={[
+            { id: contactId, name: conversation.contactName },
+            ...(vinculos?.compartenNumero ?? []),
+          ]}
+          canEdit={canEdit}
+          onResolved={(id) => onResolved?.(id)}
+        />
+      )}
 
       <div
         ref={scrollRef}

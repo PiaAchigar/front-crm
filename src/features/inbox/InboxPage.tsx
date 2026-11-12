@@ -23,7 +23,11 @@ export function InboxPage() {
       </div>
       <div className="min-w-0 flex-1">
         {selectedId ? (
-          <ConversationThread conversationId={selectedId} canEdit={canEdit} />
+          <ConversationThread
+            conversationId={selectedId}
+            canEdit={canEdit}
+            onResolved={setSelectedId}
+          />
         ) : (
           <div className="flex h-full items-center justify-center rounded-xl border border-surface-highest bg-surface-low text-sm text-ink-soft">
             Elegí una conversación para ver el hilo.

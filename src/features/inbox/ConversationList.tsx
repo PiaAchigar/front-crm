@@ -106,6 +106,11 @@ export function ConversationList({
                       {meta ? `${meta.icon} ` : ""}
                       {c.contactName ?? "Sin contacto"}
                     </span>
+                    {c.needsContactReview && (
+                      <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-900">
+                        Por revisar
+                      </span>
+                    )}
                     {c.status === "closed" && (
                       <span className="shrink-0 rounded-full bg-surface-high px-2 py-0.5 text-[10px] text-ink-soft">
                         cerrada
