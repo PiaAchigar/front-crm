@@ -213,3 +213,59 @@ export function fetchDeleteImpact(id: string): Promise<ClientDeleteImpact> {
 export function deleteClientPermanently(id: string): Promise<{ deleted: boolean }> {
   return apiFetch(`/api/crm/contacts/${id}/permanent`, { method: "DELETE" });
 }
+
+// ── Titular del WhatsApp, personas a cargo y unión de fichas ─────────────────
+
+export const PARENTESCOS = ["pareja", "hijo", "hija", "nieto", "nieta", "otro"] as const;
+export type Parentesco = (typeof PARENTESCOS)[number];
+
+export type PersonaVinculada = {
+  id: string;
+  name: string | null;
+  relationship: string | null;
+  relationshipOther: string | null;
+};
+
+export type Vinculos = {
+  /** La titular del WhatsApp que usa este contacto. `relationship` es el parentesco de ESTE contacto con ella. */
+  titular: PersonaVinculada | null;
+  aCargo: PersonaVinculada[];
+  compartenNumero: { id: string; name: string | null }[];
+};
+
+export function fetchVinculos(id: string): Promise<Vinculos> {
+  return apiFetch(`/api/crm/contacts/${id}/vinculos`);
+}
+
+export type TitularInput = {
+  holderContactId: string | null;
+  relationship?: Parentesco;
+  relationshipOther?: string;
+};
+
+/** Los vínculos van SOLO por acá: el PATCH del contacto los ignora. */
+export function setTitular(id: string, data: TitularInput): Promise<Vinculos> {
+  return apiFetch(`/api/crm/contacts/${id}/titular`, { method: "PUT", body: JSON.stringify(data) });
+}
+
+export type UnionPreview = {
+  conversaciones: number;
+  turnos: number;
+  pagos: number;
+  facturas: number;
+  compras: number;
+  aCargo: number;
+};
+
+export function fetchUnionPreview(id: string, duplicadoId: string): Promise<UnionPreview> {
+  const qs = new URLSearchParams({ duplicadoId });
+  return apiFetch(`/api/crm/contacts/${id}/unir/preview?${qs.toString()}`);
+}
+
+/** `id` es la ficha que queda; `duplicadoId` desaparece. 409 si tienen DNI/CUIT distintos. */
+export function unirContactos(id: string, duplicadoId: string): Promise<{ id: string }> {
+  return apiFetch(`/api/crm/contacts/${id}/unir`, {
+    method: "POST",
+    body: JSON.stringify({ duplicadoId }),
+  });
+}

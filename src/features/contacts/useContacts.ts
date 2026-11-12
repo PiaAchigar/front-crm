@@ -11,12 +11,17 @@ import {
   type ContactInput,
   type ContactSort,
   type NewClientInput,
+  type TitularInput,
   archiveContact,
   createClient,
   deleteClientPermanently,
   fetchContact,
   fetchContacts,
   fetchDeleteImpact,
+  fetchUnionPreview,
+  fetchVinculos,
+  setTitular,
+  unirContactos,
   unarchiveContact,
   updateContact,
 } from "../../api/contacts";
@@ -118,5 +123,52 @@ export function useDeleteClient() {
   return useMutation({
     mutationFn: (id: string) => deleteClientPermanently(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["contacts"] }),
+  });
+}
+
+export function useVinculos(id: string | null) {
+  return useQuery({
+    queryKey: ["vinculos", id],
+    queryFn: () => fetchVinculos(id as string),
+    enabled: !!id,
+  });
+}
+
+/** Vincular o desvincular toca a DOS fichas (la persona y su titular), así que
+ *  se invalidan todos los vínculos y todas las fichas, no sólo la de `id`. */
+function invalidarFamilia(qc: QueryClient) {
+  qc.invalidateQueries({ queryKey: ["vinculos"] });
+  qc.invalidateQueries({ queryKey: ["contact"] });
+  qc.invalidateQueries({ queryKey: ["contacts"] });
+}
+
+export function useSetTitular() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: TitularInput }) => setTitular(id, data),
+    onSuccess: () => invalidarFamilia(qc),
+  });
+}
+
+export function useUnionPreview(id: string, duplicadoId: string | null) {
+  return useQuery({
+    queryKey: ["union-preview", id, duplicadoId],
+    queryFn: () => fetchUnionPreview(id, duplicadoId as string),
+    enabled: !!duplicadoId,
+    // Es una cuenta del momento: no reusar una vieja.
+    gcTime: 0,
+  });
+}
+
+export function useUnirContactos() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, duplicadoId }: { id: string; duplicadoId: string }) =>
+      unirContactos(id, duplicadoId),
+    onSuccess: () => {
+      invalidarFamilia(qc);
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: ["conversation"] });
+    },
   });
 }
