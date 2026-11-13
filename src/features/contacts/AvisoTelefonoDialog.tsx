@@ -1,6 +1,6 @@
 import type { MotivoTelefono } from "../../lib/telefono";
 
-const TITULO: Record<MotivoTelefono, string> = {
+export const TITULO: Record<MotivoTelefono, string> = {
   con15: "Este número parece tener 15.",
   con0: "Este número parece tener 0.",
   corto: "Este número parece incompleto.",

@@ -160,3 +160,38 @@ describe("BarraPorRevisar", () => {
     expect(resolver).not.toHaveBeenCalled();
   });
 });
+
+describe("BarraPorRevisar con una sola ficha", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  const props = { porRevisar: true, conversationId: "C1", contactId: "A", canEdit: true };
+
+  it("con 1 ficha no pregunta si son la misma persona: ofrece Listo y limpia la marca", async () => {
+    const post = vi.spyOn(api, "resolverContacto").mockResolvedValue({ conversationId: "C1" });
+    const onResolved = vi.fn();
+    render(
+      conQuery(
+        <BarraPorRevisar {...props} candidatos={[{ id: "A", name: "Andrea" }]} onResolved={onResolved} />,
+      ),
+    );
+    expect(screen.getByText("Ya no hay otra ficha con este número.")).toBeInTheDocument();
+    expect(screen.queryByText(/¿Son la misma persona o distintas\?/)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Listo" }));
+    await waitFor(() => expect(post).toHaveBeenCalledWith("C1", { titularId: "A", otros: [] }));
+    await waitFor(() => expect(onResolved).toHaveBeenCalledWith("C1"));
+  });
+
+  it("con 2 o más fichas sigue la pregunta de siempre", () => {
+    render(
+      conQuery(
+        <BarraPorRevisar
+          {...props}
+          candidatos={[{ id: "A", name: "Andrea" }, { id: "H", name: "Sofía" }]}
+          onResolved={() => {}}
+        />,
+      ),
+    );
+    expect(screen.getByText("Hay 2 fichas con este número. ¿Son la misma persona o distintas?")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Listo" })).not.toBeInTheDocument();
+  });
+});

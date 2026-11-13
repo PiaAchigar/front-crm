@@ -26,6 +26,28 @@ export function BarraPorRevisar({
   const resolver = useResolverContacto();
   if (!porRevisar) return null;
 
+  if (candidatos.length <= 1) {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+        <span>Ya no hay otra ficha con este número.</span>
+        {canEdit && (
+          <button
+            className="rounded-full bg-primary px-3 py-1 text-xs text-white hover:bg-primary-dark disabled:opacity-40"
+            disabled={resolver.isPending}
+            onClick={() =>
+              resolver.mutate(
+                { id: conversationId, data: { titularId: contactId, otros: [] } },
+                { onSuccess: (res) => onResolved(res.conversationId) },
+              )
+            }
+          >
+            Listo
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
       <span>

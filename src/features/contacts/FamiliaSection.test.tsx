@@ -216,4 +216,71 @@ describe("FamiliaSection", () => {
       expect(screen.queryByText(/DNI o CUIT/)).not.toBeInTheDocument();
     });
   });
+  describe("Desvincular", () => {
+    const conTitular: api.Vinculos = {
+      ...vacio,
+      titular: { id: "T", name: "Andrea", relationship: "hija", relationshipOther: null },
+    };
+
+    async function abrir() {
+      const put = vi.spyOn(api, "setTitular").mockResolvedValue(vacio);
+      vi.spyOn(api, "fetchVinculos").mockResolvedValue(conTitular);
+      montar({ ...contacto, id: "H", name: "Sofía" });
+      await userEvent.click(await screen.findByRole("button", { name: "Desvincular" }));
+      return put;
+    }
+
+    it("abre el modal y no desvincula todavía", async () => {
+      const put = await abrir();
+      expect(screen.getByText("Desvincular a Sofía")).toBeInTheDocument();
+      expect(
+        screen.getByText("¿Sofía tiene WhatsApp propio? Cargalo así los avisos y turnos le llegan a Sofía."),
+      ).toBeInTheDocument();
+      expect(put).not.toHaveBeenCalled();
+    });
+
+    it("Guardar y desvincular está deshabilitado con un número inválido y explica por qué", async () => {
+      await abrir();
+      const guardar = screen.getByRole("button", { name: "Guardar y desvincular" });
+      expect(guardar).toBeDisabled();
+      await userEvent.type(screen.getByLabelText("WhatsApp propio"), "11 15 3031 7884");
+      expect(guardar).toBeDisabled();
+      expect(screen.getByText("Este número parece tener 15.")).toBeInTheDocument();
+    });
+
+    it("con número válido manda telefonoPropio", async () => {
+      const put = await abrir();
+      await userEvent.type(screen.getByLabelText("WhatsApp propio"), "1130317884");
+      await userEvent.click(screen.getByRole("button", { name: "Guardar y desvincular" }));
+      await waitFor(() =>
+        expect(put).toHaveBeenCalledWith("H", { holderContactId: null, telefonoPropio: "1130317884" }),
+      );
+    });
+
+    it("Sin número por ahora manda telefonoPropio null", async () => {
+      const put = await abrir();
+      await userEvent.click(screen.getByRole("button", { name: "Sin número por ahora" }));
+      await waitFor(() => expect(put).toHaveBeenCalledWith("H", { holderContactId: null, telefonoPropio: null }));
+    });
+
+    it("Cancelar cierra sin llamar a la API", async () => {
+      const put = await abrir();
+      await userEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+      expect(screen.queryByText("Desvincular a Sofía")).not.toBeInTheDocument();
+      expect(put).not.toHaveBeenCalled();
+    });
+
+    it("en la lista de la titular también abre el modal de la persona a cargo", async () => {
+      const put = vi.spyOn(api, "setTitular").mockResolvedValue(vacio);
+      vi.spyOn(api, "fetchVinculos").mockResolvedValue({
+        ...vacio,
+        aCargo: [{ id: "D", name: "Domingo", relationship: "pareja", relationshipOther: null }],
+      });
+      montar();
+      await userEvent.click(await screen.findByRole("button", { name: "Desvincular" }));
+      expect(screen.getByText("Desvincular a Domingo")).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Sin número por ahora" }));
+      await waitFor(() => expect(put).toHaveBeenCalledWith("D", { holderContactId: null, telefonoPropio: null }));
+    });
+  });
 });

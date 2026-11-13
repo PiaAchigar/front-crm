@@ -241,6 +241,8 @@ export type TitularInput = {
   holderContactId: string | null;
   relationship?: Parentesco;
   relationshipOther?: string;
+  /** Sólo al desvincular. string = WhatsApp propio; null = "sin número por ahora". */
+  telefonoPropio?: string | null;
 };
 
 /** Los vínculos van SOLO por acá: el PATCH del contacto los ignora. */

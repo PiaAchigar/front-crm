@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { Contact } from "../../api/contacts";
+import { DesvincularModal } from "./DesvincularModal";
 import { ParentescoModal } from "./ParentescoModal";
 import { etiquetaDeParentesco } from "./parentescos";
 import { UnirContactoModal } from "./UnirContactoModal";
@@ -11,6 +12,7 @@ export function FamiliaSection({ contact }: { contact: Contact }) {
   const setTitular = useSetTitular();
   const [vinculando, setVinculando] = useState<{ id: string; name: string | null } | null>(null);
   const [uniendo, setUniendo] = useState(false);
+  const [desvinculando, setDesvinculando] = useState<{ id: string; name: string | null } | null>(null);
 
   const nombre = contact.name ?? "esta persona";
   const numero = contact.whatsappId ?? contact.phone ?? "";
@@ -35,7 +37,7 @@ export function FamiliaSection({ contact }: { contact: Contact }) {
             <button
               className="text-xs text-ink-soft underline hover:text-ink"
               disabled={setTitular.isPending}
-              onClick={() => setTitular.mutate({ id: contact.id, data: { holderContactId: null } })}
+              onClick={() => setDesvinculando({ id: contact.id, name: contact.name })}
             >
               Desvincular
             </button>
@@ -58,7 +60,7 @@ export function FamiliaSection({ contact }: { contact: Contact }) {
                   <button
                     className="text-xs text-ink-soft underline hover:text-ink"
                     disabled={setTitular.isPending}
-                    onClick={() => setTitular.mutate({ id: p.id, data: { holderContactId: null } })}
+                    onClick={() => setDesvinculando({ id: p.id, name: p.name })}
                   >
                     Desvincular
                   </button>
@@ -120,6 +122,23 @@ export function FamiliaSection({ contact }: { contact: Contact }) {
             setTitular.mutate(
               { id: vinculando.id, data: { holderContactId: contact.id, ...elegido } },
               { onSuccess: () => setVinculando(null) },
+            )
+          }
+        />
+      )}
+      {desvinculando && (
+        <DesvincularModal
+          nombre={desvinculando.name ?? "esta persona"}
+          isPending={setTitular.isPending}
+          error={setTitular.error ? (setTitular.error as Error).message : null}
+          onClose={() => {
+            setDesvinculando(null);
+            setTitular.reset();
+          }}
+          onConfirm={(telefonoPropio) =>
+            setTitular.mutate(
+              { id: desvinculando.id, data: { holderContactId: null, telefonoPropio } },
+              { onSuccess: () => setDesvinculando(null) },
             )
           }
         />
