@@ -9,6 +9,7 @@ import {
   useUpdateContact,
 } from "./useContacts";
 import { ContactFormModal } from "./ContactFormModal";
+import { ConversacionesSection } from "./ConversacionesSection";
 import { FamiliaSection } from "./FamiliaSection";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { ComprasCard } from "../compras/ComprasCard";
@@ -122,6 +123,8 @@ export function ContactDetailPage() {
       </section>
 
       <FamiliaSection contact={contact} />
+
+      <ConversacionesSection contactId={contact.id} />
 
       {/* Cuenta (solo si es cliente) */}
       {customer && (

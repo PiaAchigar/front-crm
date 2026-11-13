@@ -36,3 +36,12 @@ export function formatDateTime(iso: string | null | undefined): string {
     hour12: false,
   }).format(new Date(iso));
 }
+
+/** "hoy HH:MM" si el instante es de hoy (ART); si no, "DD/MM". */
+export function formatHoyOFecha(iso: string, ahora: Date = new Date()): string {
+  const f = (o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("es-AR", { timeZone: TZ, hour12: false, ...o });
+  const dia = (d: Date) => f({ day: "2-digit", month: "2-digit", year: "numeric" }).format(d);
+  const d = new Date(iso);
+  if (dia(d) === dia(ahora)) return `hoy ${f({ hour: "2-digit", minute: "2-digit" }).format(d)}`;
+  return formatDateTimeToDate(iso).slice(0, 5);
+}

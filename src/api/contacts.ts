@@ -273,3 +273,17 @@ export function unirContactos(id: string, duplicadoId: string): Promise<{ id: st
     body: JSON.stringify({ duplicadoId }),
   });
 }
+
+export type ConversacionDeContacto = {
+  id: string;
+  channel: string | null;
+  status: string | null;
+  ultimoMensaje: { content: string | null; createdAt: string; senderType: string } | null;
+  cantidadMensajes: number;
+  /** Seteado cuando la conversación es de la titular (el contacto es tutelado/a). */
+  via: { titularId: string; titularName: string | null } | null;
+};
+
+export function fetchConversacionesDeContacto(id: string): Promise<{ conversaciones: ConversacionDeContacto[] }> {
+  return apiFetch(`/api/crm/contacts/${id}/conversaciones`);
+}

@@ -17,6 +17,7 @@ import {
   deleteClientPermanently,
   fetchContact,
   fetchContacts,
+  fetchConversacionesDeContacto,
   fetchDeleteImpact,
   fetchUnionPreview,
   fetchVinculos,
@@ -126,6 +127,15 @@ export function useDeleteClient() {
   });
 }
 
+export function useConversacionesDeContacto(id: string | null) {
+  return useQuery({
+    queryKey: ["contacto-conversaciones", id],
+    queryFn: () => fetchConversacionesDeContacto(id as string),
+    enabled: !!id,
+    select: (r) => r.conversaciones,
+  });
+}
+
 export function useVinculos(id: string | null) {
   return useQuery({
     queryKey: ["vinculos", id],
@@ -138,6 +148,7 @@ export function useVinculos(id: string | null) {
  *  se invalidan todos los vínculos y todas las fichas, no sólo la de `id`. */
 function invalidarFamilia(qc: QueryClient) {
   qc.invalidateQueries({ queryKey: ["vinculos"] });
+  qc.invalidateQueries({ queryKey: ["contacto-conversaciones"] });
   qc.invalidateQueries({ queryKey: ["contact"] });
   qc.invalidateQueries({ queryKey: ["contacts"] });
 }
