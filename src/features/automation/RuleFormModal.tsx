@@ -41,7 +41,7 @@ export function RuleFormModal({ rule, onClose }: { rule: Rule | null; onClose: (
   }
 
   const agentOptions = useMemo(
-    () => agents.map((a) => ({ id: a.id, label: a.fullName ?? a.email ?? a.id })),
+    () => agents.map((a) => ({ id: a.id, label: a.nombreCorto || a.fullName || a.email || a.id })),
     [agents],
   );
 

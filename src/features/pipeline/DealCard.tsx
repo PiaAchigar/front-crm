@@ -1,3 +1,4 @@
+import { etiquetaAgente } from "../../lib/etiqueta-agente";
 import { useDraggable } from "@dnd-kit/core";
 import { useState } from "react";
 import type { Agent, Deal } from "../../api/deals";
@@ -49,7 +50,7 @@ export function DealCard({ deal, agents }: { deal: Deal; agents: Agent[] }) {
         <option value="">Sin asignar</option>
         {agents.map((a) => (
           <option key={a.id} value={a.id}>
-            {a.fullName ?? a.email}
+            {etiquetaAgente(a)}
           </option>
         ))}
       </select>

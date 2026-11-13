@@ -1,3 +1,4 @@
+import { etiquetaAgente } from "../../lib/etiqueta-agente";
 import { candidatosPorRevisar } from "./candidatosPorRevisar";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -190,7 +191,7 @@ export function ConversationThread({
               <option value="">Sin asignar</option>
               {agents.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {a.fullName ?? a.email}
+                  {etiquetaAgente(a)}
                 </option>
               ))}
             </select>

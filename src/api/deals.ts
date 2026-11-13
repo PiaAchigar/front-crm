@@ -22,7 +22,12 @@ export type Deal = {
   cancelReason: string | null;
 };
 
-export type Agent = { id: string; fullName: string | null; email: string | null };
+export type Agent = {
+  id: string;
+  fullName: string | null;
+  email: string | null;
+  nombreCorto?: string;
+};
 
 export function fetchDeals(): Promise<Deal[]> {
   return apiFetch("/api/crm/deals");

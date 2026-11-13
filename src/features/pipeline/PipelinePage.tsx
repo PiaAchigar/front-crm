@@ -1,3 +1,4 @@
+import { etiquetaAgente } from "../../lib/etiqueta-agente";
 import { useState } from "react";
 import { DndContext, useDroppable, type DragEndEvent } from "@dnd-kit/core";
 import type { Agent, Deal, Stage } from "../../api/deals";
@@ -110,7 +111,7 @@ export function PipelinePage() {
             <option value="unassigned">Sin asignar</option>
             {agents.map((a) => (
               <option key={a.id} value={a.id}>
-                {a.fullName ?? a.email}
+                {etiquetaAgente(a)}
               </option>
             ))}
           </select>
