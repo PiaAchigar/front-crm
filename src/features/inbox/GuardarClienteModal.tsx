@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { UnirContactoModal } from "../contacts/UnirContactoModal";
 import { useUpdateContact, useVinculos } from "../contacts/useContacts";
-import { candidatosPorRevisar } from "./candidatosPorRevisar";
 
 const field = "w-full rounded border border-surface-highest bg-surface px-2 py-1.5 text-sm";
 
