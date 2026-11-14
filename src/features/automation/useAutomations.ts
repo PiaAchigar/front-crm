@@ -5,7 +5,6 @@ import {
   deleteRule,
   fetchRules,
   fetchRuns,
-  simulateInbound,
   updateRule,
 } from "../../api/automations";
 
@@ -38,17 +37,5 @@ export function useDeleteRule() {
   return useMutation({
     mutationFn: (id: string) => deleteRule(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["automations"] }),
-  });
-}
-
-export function useSimulateInbound() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ conversationId, content }: { conversationId: string; content: string }) =>
-      simulateInbound(conversationId, content),
-    onSuccess: (_res, { conversationId }) => {
-      qc.invalidateQueries({ queryKey: ["conversation", conversationId] });
-      qc.invalidateQueries({ queryKey: ["conversations"] });
-    },
   });
 }

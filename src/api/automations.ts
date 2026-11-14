@@ -59,10 +59,3 @@ export function deleteRule(id: string): Promise<{ ok: boolean }> {
 export function fetchRuns(): Promise<Run[]> {
   return apiFetch("/api/crm/automations/runs");
 }
-
-export function simulateInbound(conversationId: string, content: string): Promise<unknown> {
-  return apiFetch(`/api/crm/conversations/${conversationId}/simulate-inbound`, {
-    method: "POST",
-    body: JSON.stringify({ content }),
-  });
-}

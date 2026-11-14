@@ -9,9 +9,7 @@ import { ResponderFueraDelInbox } from "./ResponderFueraDelInbox";
 import { useVinculos } from "../contacts/useContacts";
 import { BarraPorRevisar } from "./BarraPorRevisar";
 import { useConversation, useSendMessage, useUpdateConversation } from "./useInbox";
-import { useSimulateInbound } from "../automation/useAutomations";
-import { can } from "../../lib/permissions";
-import { useCrmSession } from "../../lib/session";
+import { GuardarClienteModal, sinNombre } from "./GuardarClienteModal";
 
 const POLL_INTERVAL_MS = 5000;
 const LOAD_OLDER_THRESHOLD_PX = 100;
@@ -30,9 +28,7 @@ export function ConversationThread({
   const { data: agents = [] } = useQuery({ queryKey: ["agents"], queryFn: fetchAgents });
   const send = useSendMessage();
   const update = useUpdateConversation();
-  const simulate = useSimulateInbound();
-  const { role } = useCrmSession();
-  const canManage = can(role, "crm", "manage");
+  const [guardando, setGuardando] = useState(false);
   const [draft, setDraft] = useState("");
   const porRevisar = data?.conversation.needsContactReview === true;
   const contactId = data?.conversation.contactId ?? null;
@@ -164,18 +160,12 @@ export function ConversationThread({
         </div>
         {canEdit && (
           <div className="flex items-center gap-2">
-            {canManage && (
+            {contactId && sinNombre(conversation.contactName) && (
               <button
-                className="rounded-full border border-surface-highest px-3 py-1 text-xs hover:bg-surface-high"
-                disabled={simulate.isPending}
-                onClick={() => {
-                  const text = window.prompt("Simular mensaje entrante del cliente:");
-                  if (text && text.trim()) {
-                    simulate.mutate({ conversationId, content: text.trim() });
-                  }
-                }}
+                className="rounded-full border border-primary px-3 py-1 text-xs text-primary hover:bg-surface-high"
+                onClick={() => setGuardando(true)}
               >
-                Simular entrante
+                + Guardar cliente
               </button>
             )}
             <select
@@ -209,6 +199,14 @@ export function ConversationThread({
           </div>
         )}
       </div>
+
+      {guardando && contactId && (
+        <GuardarClienteModal
+          contactId={contactId}
+          telefono={conversation.contactPhone ?? conversation.contactName}
+          onClose={() => setGuardando(false)}
+        />
+      )}
 
       {contactId && (
         <BarraPorRevisar
