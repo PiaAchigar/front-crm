@@ -133,5 +133,24 @@ describe("ConversationThread — + Guardar cliente", () => {
     expect(await screen.findByText("Ya hay 1 ficha con este número: Lucía Gómez.")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: /Es la misma/ }));
     expect(await screen.findByText("Unir con otro contacto")).toBeTruthy();
+    // Se queda la ficha existente (K2); el contacto sin nombre del webhook (K1) se une adentro.
+    const unir = vi.spyOn(contacts, "unirContactos").mockResolvedValue({ id: "K2" });
+    await user.click(await screen.findByRole("button", { name: "Unir fichas" }));
+    expect(unir).toHaveBeenCalledWith("K2", "K1");
+  });
+
+  it("con varias fichas se elige cuál se queda y se une el contacto de la conversación adentro", async () => {
+    montar("5491158499585", [
+      { id: "K2", name: "Lucía Gómez" },
+      { id: "K3", name: "Lucía G." },
+    ]);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /\+ Guardar cliente/ }));
+    expect(await screen.findByText(/Ya hay 2 fichas con este número: Lucía Gómez, Lucía G\./)).toBeTruthy();
+    await user.click(screen.getByLabelText("Lucía G."));
+    await user.click(screen.getByRole("button", { name: /Es la misma/ }));
+    const unir = vi.spyOn(contacts, "unirContactos").mockResolvedValue({ id: "K3" });
+    await user.click(await screen.findByRole("button", { name: "Unir fichas" }));
+    expect(unir).toHaveBeenCalledWith("K3", "K1");
   });
 });

@@ -203,6 +203,7 @@ export function ConversationThread({
       {guardando && contactId && (
         <GuardarClienteModal
           contactId={contactId}
+          nombreActual={conversation.contactName}
           telefono={conversation.contactPhone ?? conversation.contactName}
           onClose={() => setGuardando(false)}
         />

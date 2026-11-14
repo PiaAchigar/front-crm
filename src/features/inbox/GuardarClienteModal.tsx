@@ -15,10 +15,13 @@ export function sinNombre(name: string | null | undefined): boolean {
 /** Completa la ficha que el webhook ya creó para la conversación (no crea otra). */
 export function GuardarClienteModal({
   contactId,
+  nombreActual = null,
   telefono,
   onClose,
 }: {
   contactId: string;
+  /** Cómo se llama hoy el contacto de la conversación (el número, si vino del webhook). */
+  nombreActual?: string | null;
   telefono: string | null;
   onClose: () => void;
 }) {
@@ -26,10 +29,12 @@ export function GuardarClienteModal({
   const [apellido, setApellido] = useState("");
   const [email, setEmail] = useState("");
   const [uniendo, setUniendo] = useState(false);
+  const [quedaId, setQuedaId] = useState<string | null>(null);
   const qc = useQueryClient();
   const update = useUpdateContact();
   const { data: vinculos } = useVinculos(contactId);
   const otras = vinculos?.compartenNumero ?? [];
+  const queda = otras.find((c) => c.id === (quedaId ?? otras[0]?.id)) ?? null;
 
   function guardar() {
     const name = `${nombre} ${apellido}`.trim();
@@ -48,15 +53,19 @@ export function GuardarClienteModal({
     );
   }
 
-  if (uniendo) {
+  if (uniendo && queda) {
+    // La ficha que se queda es la existente; el contacto sin nombre del webhook se une adentro.
+    // La conversación sigue sola: la unión re-apunta las FK.
     return (
       <UnirContactoModal
-        contact={{ id: contactId, name: null }}
-        candidatos={candidatosPorRevisar({ id: contactId, name: null }, vinculos)}
+        contact={queda}
+        candidatos={[queda, { id: contactId, name: nombreActual }]}
         onClose={() => setUniendo(false)}
         onUnido={() => {
           qc.invalidateQueries({ queryKey: ["conversations"] });
           qc.invalidateQueries({ queryKey: ["conversation"] });
+          qc.invalidateQueries({ queryKey: ["contacts"] });
+          qc.invalidateQueries({ queryKey: ["contact"] });
           onClose();
         }}
       />
@@ -74,6 +83,22 @@ export function GuardarClienteModal({
                 .map((c) => c.name ?? "Sin nombre")
                 .join(", ")}.`}
             </span>
+            {otras.length > 1 && (
+              <fieldset className="flex flex-col gap-1">
+                <legend className="text-xs">¿Cuál ficha se queda?</legend>
+                {otras.map((c) => (
+                  <label key={c.id} className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="queda"
+                      checked={queda?.id === c.id}
+                      onChange={() => setQuedaId(c.id)}
+                    />
+                    {c.name ?? "Sin nombre"}
+                  </label>
+                ))}
+              </fieldset>
+            )}
             <button
               className="self-start rounded-full border border-primary px-3 py-1 text-xs text-primary hover:bg-surface-high"
               onClick={() => setUniendo(true)}
